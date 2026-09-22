@@ -74,6 +74,33 @@
     }
   }
 
+  function resolveGiftImageUrl(gift) {
+    if (!gift) return 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400';
+    if (gift.image_url && gift.image_url.trim().startsWith('http') && !gift.image_url.includes('example.com')) {
+      return gift.image_url.trim();
+    }
+    const nameLower = (gift.name || '').toLowerCase();
+    if (nameLower.includes('football') || nameLower.includes('ball')) {
+      return 'https://images.unsplash.com/photo-1614632537197-38a17061c2bd?w=400';
+    }
+    if (nameLower.includes('backpack') || nameLower.includes('bag')) {
+      return 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400';
+    }
+    if (nameLower.includes('notebook') || nameLower.includes('book')) {
+      return 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400';
+    }
+    if (nameLower.includes('pen') || nameLower.includes('pencil')) {
+      return 'https://images.unsplash.com/photo-1585336261026-875a60a1c96b?w=400';
+    }
+    if (nameLower.includes('water') || nameLower.includes('bottle')) {
+      return 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400';
+    }
+    if (nameLower.includes('cap') || nameLower.includes('hat')) {
+      return 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400';
+    }
+    return 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400';
+  }
+
   function saveDB(db) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
@@ -645,43 +672,81 @@
     getGifts: async function () {
       const client = getSupabaseClient();
       const db = getDB();
-      const localGifts = db.gifts || [];
-      const mergedMap = new Map();
 
-      localGifts.forEach(g => {
-        if (g && g.id !== undefined && g.id !== null) {
-          mergedMap.set(String(g.id), g);
-        }
-      });
+      let giftList = [];
 
       if (client) {
         try {
-          const { data, error } = await client.from('gifts').select('*').order('created_at', { ascending: false });
+          const { data, error } = await client.from('gifts').select('*');
           if (!error && data) {
-            data.forEach(g => {
-              mergedMap.set(String(g.id), g);
-            });
+            // Auto-seed default gifts if Supabase gifts table is empty
+            if (data.length === 0 && (db.gifts || []).length > 0) {
+              const seedPayloads = db.gifts.map(g => ({
+                name: g.name,
+                description: g.description || '',
+                image_url: resolveGiftImageUrl(g),
+                points_price: Number(g.points_price),
+                active: true
+              }));
+              const { data: insertedData, error: seedErr } = await client.from('gifts').insert(seedPayloads).select();
+              if (!seedErr && insertedData && insertedData.length > 0) {
+                giftList = insertedData;
+              }
+            } else {
+              giftList = data;
+            }
           }
         } catch (e) {
           console.warn('Supabase getGifts error:', e);
+          giftList = db.gifts || [];
+        }
+      } else {
+        giftList = db.gifts || [];
+      }
+
+      // Deduplicate gifts strictly by normalized name and ID, and ensure image_url is stored in DB
+      const uniqueGifts = [];
+      const seenKeys = new Set();
+
+      for (const g of giftList) {
+        if (!g || !g.name) continue;
+        const nameKey = g.name.trim().toLowerCase();
+        const idKey = String(g.id);
+
+        if (!seenKeys.has(idKey) && !seenKeys.has(nameKey)) {
+          seenKeys.add(idKey);
+          seenKeys.add(nameKey);
+
+          // Resolve valid image URL and update DB column if missing or empty
+          const validImg = resolveGiftImageUrl(g);
+          if (!g.image_url || g.image_url !== validImg) {
+            g.image_url = validImg;
+            if (client && g.id) {
+              // Update image_url column in Supabase gifts table asynchronously
+              client.from('gifts').update({ image_url: validImg }).eq('id', g.id).then(() => {}).catch(() => {});
+            }
+          }
+
+          uniqueGifts.push(g);
         }
       }
 
-      const giftsList = Array.from(mergedMap.values());
-      if (giftsList.length > 0) {
-        db.gifts = giftsList;
-        saveDB(db);
-      }
-      return giftsList;
+      // Sort gifts from HIGHEST points price to LOWEST points price
+      uniqueGifts.sort((a, b) => Number(b.points_price || 0) - Number(a.points_price || 0));
+
+      db.gifts = uniqueGifts;
+      saveDB(db);
+      return uniqueGifts;
     },
 
     saveGift: async function (giftData) {
       const client = getSupabaseClient();
+      const resolvedImg = resolveGiftImageUrl({ name: giftData.name, image_url: giftData.image_url });
       const payload = {
         name: giftData.name,
         description: giftData.description || '',
         points_price: Number(giftData.points_price),
-        image_url: giftData.image_url || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400',
+        image_url: resolvedImg,
         active: giftData.active !== undefined ? giftData.active : true
       };
 
@@ -722,6 +787,9 @@
         });
       }
 
+      // Sort local gifts list from highest to lowest points price
+      db.gifts.sort((a, b) => Number(b.points_price || 0) - Number(a.points_price || 0));
+
       saveDB(db);
       return true;
     },
@@ -745,34 +813,52 @@
     getPurchases: async function () {
       const client = getSupabaseClient();
       const db = getDB();
-      const localPurchases = db.purchases || [];
-      const mergedMap = new Map();
-
-      localPurchases.forEach(p => {
-        if (p && p.id !== undefined && p.id !== null) {
-          mergedMap.set(String(p.id), p);
-        }
-      });
 
       if (client) {
         try {
           const { data, error } = await client.from('purchases').select('*').order('created_at', { ascending: false });
           if (!error && data) {
-            data.forEach(p => {
-              mergedMap.set(String(p.id), p);
+            const valid = data.filter(p => p && p.child_id && p.gift_id);
+            const uniquePurchases = [];
+            const seenIds = new Set();
+            const seenChildPurchases = new Set();
+
+            valid.forEach(p => {
+              const idKey = String(p.id);
+              const childKey = String(p.child_id).trim();
+              if (!seenIds.has(idKey) && !seenChildPurchases.has(childKey)) {
+                seenIds.add(idKey);
+                seenChildPurchases.add(childKey);
+                uniquePurchases.push(p);
+              }
             });
+
+            db.purchases = uniquePurchases;
+            saveDB(db);
+            return uniquePurchases;
           }
         } catch (e) {
           console.warn('Supabase getPurchases error:', e);
         }
       }
 
-      const purchasesList = Array.from(mergedMap.values());
-      if (purchasesList.length > 0) {
-        db.purchases = purchasesList;
-        saveDB(db);
-      }
-      return purchasesList;
+      // Offline / LocalStorage Fallback
+      const localPurchases = (db.purchases || []).filter(p => p && p.child_id && p.gift_id);
+      const uniquePurchases = [];
+      const seenIds = new Set();
+      const seenChildPurchases = new Set();
+
+      localPurchases.forEach(p => {
+        const idKey = String(p.id);
+        const childKey = String(p.child_id).trim();
+        if (!seenIds.has(idKey) && !seenChildPurchases.has(childKey)) {
+          seenIds.add(idKey);
+          seenChildPurchases.add(childKey);
+          uniquePurchases.push(p);
+        }
+      });
+
+      return uniquePurchases;
     },
 
     purchaseGift: async function (childId, giftId) {
@@ -848,6 +934,24 @@
       });
 
       return pur;
+    },
+
+    deletePurchase: async function (purchaseId) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          await client.from('purchases').delete().eq('id', purchaseId);
+          await client.from('point_transactions').delete().eq('source_id', String(purchaseId));
+        } catch (e) {
+          console.warn('Supabase deletePurchase error:', e);
+        }
+      }
+
+      const db = getDB();
+      db.purchases = (db.purchases || []).filter(p => String(p.id) !== String(purchaseId));
+      db.point_transactions = (db.point_transactions || []).filter(t => String(t.source_id) !== String(purchaseId));
+      saveDB(db);
+      return true;
     },
 
     // --- SYSTEM SETTINGS ---

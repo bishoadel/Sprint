@@ -38,6 +38,7 @@ window.TomaStore = {
     if (!grid) return;
 
     const gifts = await TomaDB.getGifts();
+    gifts.sort((a, b) => Number(b.points_price || 0) - Number(a.points_price || 0));
     if (gifts.length === 0) {
       grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:30px; color:#64748B;">No gifts created yet.</div>`;
       return;
@@ -45,8 +46,8 @@ window.TomaStore = {
 
     grid.innerHTML = gifts.map(gift => `
       <div class="child-card" style="border-top:3px solid var(--gold-primary);">
-        <div style="height:120px; overflow:hidden; border-radius:8px; margin-bottom:10px; background:#F1F5F9;">
-          <img src="${gift.image_url || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400'}" alt="${gift.name}" style="width:100%; height:100%; object-fit:cover;">
+        <div style="height:120px; overflow:hidden; border-radius:8px; margin-bottom:10px; background:#F1F5F9; display:flex; align-items:center; justify-content:center; color:#94A3B8;">
+          ${gift.image_url ? `<img src="${gift.image_url}" alt="${gift.name}" style="width:100%; height:100%; object-fit:cover;" loading="lazy">` : `<span style="font-size:2.5rem;">🎁</span>`}
         </div>
         <h4 style="margin:0 0 4px 0; color:#0D2040;">${gift.name}</h4>
         <p style="font-size:0.8rem; color:#64748B; margin-bottom:10px; flex:1;">${gift.description || 'No description'}</p>
@@ -156,6 +157,7 @@ window.TomaStore = {
               <th>Gift Item</th>
               <th>Points Price</th>
               <th>Status</th>
+              <th style="text-align:center;">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -171,6 +173,11 @@ window.TomaStore = {
                   <td>🎁 ${gift ? gift.name : 'Gift Item #' + p.gift_id}</td>
                   <td><strong style="color:var(--gold-dark);">${p.points_price || (gift ? gift.points_price : 0)} Pts</strong></td>
                   <td><span class="badge badge-success">CLAIMED</span></td>
+                  <td style="text-align:center;">
+                    <button class="btn btn-danger btn-sm" onclick="TomaStore.confirmDeletePurchase('${p.id}')">
+                      🗑️ Delete
+                    </button>
+                  </td>
                 </tr>
               `;
             }).join('')}
@@ -178,6 +185,24 @@ window.TomaStore = {
         </table>
       </div>
     `;
+  },
+
+  confirmDeletePurchase: function (purchaseId) {
+    TomaUtils.showConfirmModal({
+      title: 'Delete Purchase Record',
+      message: 'Are you sure you want to delete this purchase record? The deducted points will be refunded to the child.',
+      confirmText: 'Yes, Delete',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        try {
+          await TomaDB.deletePurchase(purchaseId);
+          TomaUtils.showToast('Purchase record deleted and points refunded.', 'success');
+          await this.renderAdminPurchasesTable();
+        } catch (err) {
+          TomaUtils.showToast(err.message || 'Failed to delete purchase', 'error');
+        }
+      }
+    });
   },
 
   // USER STORE PORTAL RENDERER
@@ -192,6 +217,7 @@ window.TomaStore = {
     }
 
     const gifts = await TomaDB.getGifts();
+    gifts.sort((a, b) => Number(b.points_price || 0) - Number(a.points_price || 0));
     const purchases = await TomaDB.getPurchases();
     const childPoints = await TomaDB.getChildPoints(childId);
 
@@ -230,8 +256,8 @@ window.TomaStore = {
 
       return `
         <div class="gift-card-user ${hasPurchasedThis ? 'purchased-highlight' : ''}">
-          <div class="gift-image-wrap">
-            <img src="${gift.image_url || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400'}" alt="${gift.name}">
+          <div class="gift-image-wrap" style="background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center;">
+            ${gift.image_url ? `<img src="${gift.image_url}" alt="${gift.name}" loading="lazy">` : `<span style="font-size:3rem;">🎁</span>`}
           </div>
           <div class="gift-title">${gift.name}</div>
           <div class="gift-desc">${gift.description || ''}</div>
