@@ -16,7 +16,13 @@ window.TomaAttendance = {
   setDefaultDate: function () {
     const dateInput = document.getElementById('att-date-picker');
     if (dateInput) {
-      dateInput.value = new Date().toISOString().split('T')[0];
+      const todayStr = TomaUtils.getTodayDateString();
+      dateInput.value = todayStr;
+      dateInput.max = todayStr;
+    }
+    const historyDate = document.getElementById('att-history-date-filter');
+    if (historyDate) {
+      historyDate.max = TomaUtils.getTodayDateString();
     }
   },
 
@@ -129,6 +135,12 @@ window.TomaAttendance = {
       return;
     }
 
+    const todayStr = TomaUtils.getTodayDateString();
+    if (dateStr > todayStr) {
+      TomaUtils.showToast('Cannot record attendance for future dates.', 'error');
+      return;
+    }
+
     const checkedBoxes = document.querySelectorAll('.att-checkbox:checked');
     const selectedChildIds = Array.from(checkedBoxes).map(cb => cb.value);
 
@@ -215,7 +227,7 @@ window.TomaAttendance = {
       const mappedCode = typeCodeMap.get(rawTypeId) || typeCodeMap.get(String(r.attendance_type_id)) || rawTypeCode || rawTypeId;
 
       // Category filter
-      if (this.historyCategory !== 'all') {
+      if (this.historyCategory && this.historyCategory !== 'all') {
         const matchesCat = (
           mappedCode === this.historyCategory ||
           rawTypeCode === this.historyCategory ||
@@ -234,7 +246,7 @@ window.TomaAttendance = {
       const child = (r.children && r.children.name) ? r.children : childMap.get(String(r.child_id));
       const cName = child ? String(child.name).toLowerCase() : '';
       const cCode = child ? String(child.child_code).toLowerCase() : '';
-      
+
       if (searchQ && !cName.includes(searchQ) && !cCode.includes(searchQ)) {
         return false;
       }
@@ -311,19 +323,19 @@ window.TomaAttendance = {
           <div class="att-date-body">
             <div class="att-names-grid">
               ${[...dateRecords].sort((a, b) => {
-                const nameA = (a.children && a.children.name) ? a.children.name : (childMap.get(String(a.child_id))?.name || '');
-                const nameB = (b.children && b.children.name) ? b.children.name : (childMap.get(String(b.child_id))?.name || '');
-                return nameA.localeCompare(nameB, 'en', { sensitivity: 'base' });
-              }).map(r => {
-                const child = (r.children && r.children.name) ? r.children : childMap.get(String(r.child_id));
-                const typeCode = (r.attendance_types && r.attendance_types.code) || typeCodeMap.get(String(r.attendance_type_id)) || 'attendance';
-                const typeName = (r.attendance_types && r.attendance_types.name) || typeNameMap.get(String(r.attendance_type_id)) || typeCode.replace('_', ' ').toUpperCase();
-                const childName = child ? child.name : 'Unknown Child';
-                const childCode = child ? child.child_code : 'N/A';
-                const initial = childName.charAt(0).toUpperCase();
+        const nameA = (a.children && a.children.name) ? a.children.name : (childMap.get(String(a.child_id))?.name || '');
+        const nameB = (b.children && b.children.name) ? b.children.name : (childMap.get(String(b.child_id))?.name || '');
+        return nameA.localeCompare(nameB, 'en', { sensitivity: 'base' });
+      }).map(r => {
+        const child = (r.children && r.children.name) ? r.children : childMap.get(String(r.child_id));
+        const typeCode = (r.attendance_types && r.attendance_types.code) || typeCodeMap.get(String(r.attendance_type_id)) || 'attendance';
+        const typeName = (r.attendance_types && r.attendance_types.name) || typeNameMap.get(String(r.attendance_type_id)) || typeCode.replace('_', ' ').toUpperCase();
+        const childName = child ? child.name : 'Unknown Child';
+        const childCode = child ? child.child_code : 'N/A';
+        const initial = childName.charAt(0).toUpperCase();
 
 
-                return `
+        return `
                   <div class="att-child-chip">
                     <div class="att-child-avatar">${initial}</div>
                     <div class="att-child-info">
@@ -340,7 +352,7 @@ window.TomaAttendance = {
 
                   </div>
                 `;
-              }).join('')}
+      }).join('')}
             </div>
           </div>
         </div>

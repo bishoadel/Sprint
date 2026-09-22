@@ -164,7 +164,7 @@ window.TomaStore = {
             ${purchases.map(p => {
               const child = childMap.get(String(p.child_id));
               const gift = giftMap.get(String(p.gift_id));
-              const dateStr = p.created_at || p.purchased_at || new Date().toISOString();
+              const dateStr = p.purchased_at || p.created_at || new Date().toISOString();
               return `
                 <tr>
                   <td>${TomaUtils.formatDate(dateStr)}</td>
@@ -175,7 +175,7 @@ window.TomaStore = {
                   <td><span class="badge badge-success">CLAIMED</span></td>
                   <td style="text-align:center;">
                     <button class="btn btn-danger btn-sm" onclick="TomaStore.confirmDeletePurchase('${p.id}')">
-                      🗑️ Delete
+                      🗑️ Delete & Refund
                     </button>
                   </td>
                 </tr>
@@ -189,9 +189,9 @@ window.TomaStore = {
 
   confirmDeletePurchase: function (purchaseId) {
     TomaUtils.showConfirmModal({
-      title: 'Delete Purchase Record',
-      message: 'Are you sure you want to delete this purchase record? The deducted points will be refunded to the child.',
-      confirmText: 'Yes, Delete',
+      title: 'Delete Purchase & Refund Points',
+      message: 'Are you sure you want to delete this purchase record? The deducted points will be automatically refunded to the child.',
+      confirmText: 'Yes, Delete & Refund',
       confirmClass: 'btn-danger',
       onConfirm: async () => {
         try {

@@ -226,7 +226,7 @@ window.TomaNotifications = {
       return;
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = TomaUtils.getTodayDateString();
     const lastChecked = localStorage.getItem('toma_last_popup_check');
 
     // Prevent duplicate popups on the same day

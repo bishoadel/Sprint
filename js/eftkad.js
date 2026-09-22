@@ -15,7 +15,11 @@ window.TomaEftkad = {
 
   setDefaultDate: function () {
     const d = document.getElementById('eftkad-date');
-    if (d) d.value = new Date().toISOString().split('T')[0];
+    if (d) {
+      const todayStr = TomaUtils.getTodayDateString();
+      d.value = todayStr;
+      d.max = todayStr;
+    }
   },
 
   populateChildSelect: async function () {
@@ -47,6 +51,12 @@ window.TomaEftkad = {
 
     if (!childId || !dateStr) {
       TomaUtils.showToast('Please select a child and visit date.', 'error');
+      return;
+    }
+
+    const todayStr = TomaUtils.getTodayDateString();
+    if (dateStr > todayStr) {
+      TomaUtils.showToast('Cannot record Eftkad visit for future dates.', 'error');
       return;
     }
 

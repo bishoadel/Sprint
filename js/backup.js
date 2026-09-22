@@ -10,7 +10,7 @@ window.TomaBackup = {
       const jsonStr = JSON.stringify(data, null, 2);
       const blob = new Blob([jsonStr], { type: 'application/json' });
       
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = TomaUtils.getTodayDateString();
       const filename = `Toma_el_Rasol_Backup_${dateStr}.json`;
 
       const a = document.createElement('a');

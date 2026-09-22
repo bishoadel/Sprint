@@ -816,21 +816,30 @@
 
       if (client) {
         try {
-          const { data, error } = await client.from('purchases').select('*').order('created_at', { ascending: false });
-          if (!error && data) {
-            const valid = data.filter(p => p && p.child_id && p.gift_id);
+          let res = await client.from('purchases').select('*').order('purchased_at', { ascending: false });
+          if (res.error) {
+            res = await client.from('purchases').select('*').order('created_at', { ascending: false });
+          }
+          if (res.error) {
+            res = await client.from('purchases').select('*');
+          }
+          if (!res.error && res.data) {
+            const valid = res.data.filter(p => p && p.child_id && p.gift_id);
             const uniquePurchases = [];
             const seenIds = new Set();
-            const seenChildPurchases = new Set();
 
             valid.forEach(p => {
               const idKey = String(p.id);
-              const childKey = String(p.child_id).trim();
-              if (!seenIds.has(idKey) && !seenChildPurchases.has(childKey)) {
+              if (!seenIds.has(idKey)) {
                 seenIds.add(idKey);
-                seenChildPurchases.add(childKey);
                 uniquePurchases.push(p);
               }
+            });
+
+            uniquePurchases.sort((a, b) => {
+              const dA = new Date(a.purchased_at || a.created_at || 0);
+              const dB = new Date(b.purchased_at || b.created_at || 0);
+              return dB - dA;
             });
 
             db.purchases = uniquePurchases;
@@ -846,16 +855,19 @@
       const localPurchases = (db.purchases || []).filter(p => p && p.child_id && p.gift_id);
       const uniquePurchases = [];
       const seenIds = new Set();
-      const seenChildPurchases = new Set();
 
       localPurchases.forEach(p => {
         const idKey = String(p.id);
-        const childKey = String(p.child_id).trim();
-        if (!seenIds.has(idKey) && !seenChildPurchases.has(childKey)) {
+        if (!seenIds.has(idKey)) {
           seenIds.add(idKey);
-          seenChildPurchases.add(childKey);
           uniquePurchases.push(p);
         }
+      });
+
+      uniquePurchases.sort((a, b) => {
+        const dA = new Date(a.purchased_at || a.created_at || 0);
+        const dB = new Date(b.purchased_at || b.created_at || 0);
+        return dB - dA;
       });
 
       return uniquePurchases;

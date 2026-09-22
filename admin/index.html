@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard - Toma el Rasol</title>
-  
+
   <!-- CSS -->
   <link rel="stylesheet" href="../css/global.css">
   <link rel="stylesheet" href="../css/admin.css">
@@ -17,6 +18,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
+
 <body>
 
   <div class="admin-layout">
@@ -99,19 +101,24 @@
       </header>
 
       <div class="admin-container">
-        
+
         <!-- 1. KASHF TAB -->
         <section class="tab-panel active" id="tab-kashf">
           <div class="card-header-actions">
             <div class="search-input-wrap">
               <span class="search-icon">🔍</span>
-              <input type="text" id="kashf-search-input" class="form-control" placeholder="Search by name or Child ID...">
+              <input type="text" id="kashf-search-input" class="form-control"
+                placeholder="Search by name or Child ID...">
             </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <input type="file" id="input-excel-file" accept=".xlsx, .xls, .csv" onchange="TomaExcelImporter.handleFileUpload(this.files[0])" style="display:none;">
-              <button class="btn btn-outline-gold" onclick="document.getElementById('input-excel-file').click()">📊 Import from Excel</button>
-              <button class="btn btn-primary" onclick="TomaQR.exportAllQRCodesZip()">📥 Export All QR Codes (ZIP)</button>
-              <button class="btn btn-gold" onclick="TomaUtils.openModal('modal-add-child')">+ Add Child Manually</button>
+              <input type="file" id="input-excel-file" accept=".xlsx, .xls, .csv"
+                onchange="TomaExcelImporter.handleFileUpload(this.files[0])" style="display:none;">
+              <button class="btn btn-outline-gold" onclick="document.getElementById('input-excel-file').click()">📊
+                Import from Excel</button>
+              <button class="btn btn-primary" onclick="TomaQR.exportAllQRCodesZip()">📥 Export All QR Codes
+                (ZIP)</button>
+              <button class="btn btn-gold" onclick="TomaUtils.openModal('modal-add-child')">+ Add Child
+                Manually</button>
             </div>
           </div>
 
@@ -130,7 +137,8 @@
                   <span class="search-icon">🔍</span>
                   <input type="text" id="lb-search-input" class="form-control" placeholder="Filter leaderboard...">
                 </div>
-                <button class="btn btn-outline-danger btn-sm" onclick="TomaLeaderboard.confirmResetAllScores()" title="Reset all children scores to 0">🔄 Reset All Scores</button>
+                <button class="btn btn-outline-danger btn-sm" onclick="TomaLeaderboard.confirmResetAllScores()"
+                  title="Reset all children scores to 0">🔄 Reset All Scores</button>
               </div>
             </div>
 
@@ -149,23 +157,29 @@
             <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
               <div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                  <input type="text" id="score-search-input" class="form-control" placeholder="Search children..." style="max-width:260px;">
+                  <input type="text" id="score-search-input" class="form-control" placeholder="Search children..."
+                    style="max-width:260px;">
                   <div>
-                    <button class="btn btn-secondary btn-sm" onclick="TomaPointsEngine.selectAll(true)">Check All</button>
-                    <button class="btn btn-secondary btn-sm" onclick="TomaPointsEngine.selectAll(false)">Uncheck All</button>
+                    <button class="btn btn-secondary btn-sm" onclick="TomaPointsEngine.selectAll(true)">Check
+                      All</button>
+                    <button class="btn btn-secondary btn-sm" onclick="TomaPointsEngine.selectAll(false)">Uncheck
+                      All</button>
                   </div>
                 </div>
                 <div class="attendance-list" id="score-children-list" style="max-height:350px; overflow-y:auto;"></div>
               </div>
 
-              <div style="background:#FAF8F5; padding:20px; border-radius:12px; border:1px solid #E2E8F0; height:fit-content;">
+              <div
+                style="background:#FAF8F5; padding:20px; border-radius:12px; border:1px solid #E2E8F0; height:fit-content;">
                 <div class="form-group">
                   <label class="form-label">Points Value (+ / -)</label>
-                  <input type="number" id="score-points-value" class="form-control" placeholder="e.g. +20 or -10" required>
+                  <input type="number" id="score-points-value" class="form-control" placeholder="e.g. +20 or -10"
+                    required>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Reason / Audit Note</label>
-                  <input type="text" id="score-reason-note" class="form-control" placeholder="e.g. Special Activity Award">
+                  <input type="text" id="score-reason-note" class="form-control"
+                    placeholder="e.g. Special Activity Award">
                 </div>
                 <button class="btn btn-gold" id="btn-apply-manual-points" style="width:100%;">Apply Points</button>
               </div>
@@ -184,7 +198,8 @@
             <div class="card-header-actions">
               <div>
                 <h3 style="margin:0;">Automatic Points Rules</h3>
-                <p style="color:#64748B; font-size:0.85rem; margin:0;">Configure points automatically awarded when attendance or custom events are logged.</p>
+                <p style="color:#64748B; font-size:0.85rem; margin:0;">Configure points automatically awarded when
+                  attendance or custom events are logged.</p>
               </div>
               <button class="btn btn-gold" onclick="TomaPointsEngine.openAddRuleModal()">+ Create New Rule</button>
             </div>
@@ -195,10 +210,12 @@
         <!-- 5. ATTENDANCE TAB -->
         <section class="tab-panel" id="tab-attendance">
           <div class="card-container">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
+            <div
+              style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
               <div>
                 <h3 style="margin:0;">Record Class Attendance</h3>
-                <p style="color:#64748B; font-size:0.85rem; margin:0;">Select date, category, present children, and click Save Attendance.</p>
+                <p style="color:#64748B; font-size:0.85rem; margin:0;">Select date, category, present children, and
+                  click Save Attendance.</p>
               </div>
               <div style="display:flex; align-items:center; gap:10px;">
                 <label style="font-weight:600; font-size:0.9rem;">Date:</label>
@@ -208,23 +225,30 @@
 
             <!-- Attendance Category Tabs -->
             <div class="attendance-type-selector">
-              <button class="att-tab" data-category="mass" onclick="TomaAttendance.switchCategory('mass')">⛪ Mass</button>
-              <button class="att-tab active" data-category="sunday_school" onclick="TomaAttendance.switchCategory('sunday_school')">📖 Sunday School</button>
-              <button class="att-tab" data-category="hymns" onclick="TomaAttendance.switchCategory('hymns')">🎵 Hymns</button>
-              <button class="att-tab" data-category="bible_study" onclick="TomaAttendance.switchCategory('bible_study')">💡 Bible Study</button>
+              <button class="att-tab" data-category="mass" onclick="TomaAttendance.switchCategory('mass')">⛪
+                Mass</button>
+              <button class="att-tab active" data-category="sunday_school"
+                onclick="TomaAttendance.switchCategory('sunday_school')">📖 Sunday School</button>
+              <button class="att-tab" data-category="hymns" onclick="TomaAttendance.switchCategory('hymns')">🎵
+                Hymns</button>
+              <button class="att-tab" data-category="bible_study"
+                onclick="TomaAttendance.switchCategory('bible_study')">💡 Bible Study</button>
             </div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-              <input type="text" id="att-search-input" class="form-control" placeholder="Search child..." style="max-width:280px;">
+              <input type="text" id="att-search-input" class="form-control" placeholder="Search child..."
+                style="max-width:280px;">
               <div>
                 <button class="btn btn-secondary btn-sm" onclick="TomaAttendance.selectAll(true)">Select All</button>
                 <button class="btn btn-secondary btn-sm" onclick="TomaAttendance.selectAll(false)">Deselect All</button>
               </div>
             </div>
 
-            <div class="attendance-list" id="attendance-children-list" style="max-height:400px; overflow-y:auto; margin-bottom:20px;"></div>
+            <div class="attendance-list" id="attendance-children-list"
+              style="max-height:400px; overflow-y:auto; margin-bottom:20px;"></div>
 
-            <button class="btn btn-gold btn-lg" id="btn-save-attendance" style="width:100%;">Save Attendance & Award Automatic Points</button>
+            <button class="btn btn-gold btn-lg" id="btn-save-attendance" style="width:100%;">Save Attendance & Award
+              Automatic Points</button>
           </div>
         </section>
 
@@ -232,25 +256,32 @@
         <section class="tab-panel" id="tab-attendance_history">
 
           <div class="card-container">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
+            <div
+              style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
               <div>
                 <h3 style="margin:0;">Attendance History Logs</h3>
                 <p style="color:#64748B; font-size:0.85rem; margin:0;">View attendance history categorized by event type and grouped by date.</p>
               </div>
               <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                <input type="text" id="att-history-search-input" class="form-control" placeholder="Search child..." style="width:200px;">
+                <input type="text" id="att-history-search-input" class="form-control" placeholder="Search child..."
+                  style="width:200px;">
                 <input type="date" id="att-history-date-filter" class="form-control" style="width:auto;">
-                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('att-history-date-filter').value=''; document.getElementById('att-history-search-input').value=''; TomaAttendance.renderAttendanceHistory();">Reset Filters</button>
+                <button class="btn btn-secondary btn-sm"
+                  onclick="document.getElementById('att-history-date-filter').value=''; document.getElementById('att-history-search-input').value=''; TomaAttendance.renderAttendanceHistory();">Reset
+                  Filters</button>
               </div>
             </div>
 
-            <!-- Attendance Category Tabs for History -->
+            <!-- Attendance Category Tabs for History (Excluding All Categories) -->
             <div class="attendance-type-selector" style="margin-bottom:24px;">
-              <button class="att-history-tab active" data-category="mass" onclick="TomaAttendance.switchHistoryCategory('mass')">⛪ Mass</button>
-              <button class="att-history-tab" data-category="sunday_school" onclick="TomaAttendance.switchHistoryCategory('sunday_school')">📖 Sunday School</button>
-              <button class="att-history-tab" data-category="hymns" onclick="TomaAttendance.switchHistoryCategory('hymns')">🎵 Hymns</button>
-              <button class="att-history-tab" data-category="bible_study" onclick="TomaAttendance.switchHistoryCategory('bible_study')">💡 Bible Study</button>
-              <button class="att-history-tab" data-category="all" onclick="TomaAttendance.switchHistoryCategory('all')">📋 All Categories</button>
+              <button class="att-history-tab active" data-category="mass"
+                onclick="TomaAttendance.switchHistoryCategory('mass')">⛪ Mass</button>
+              <button class="att-history-tab" data-category="sunday_school"
+                onclick="TomaAttendance.switchHistoryCategory('sunday_school')">📖 Sunday School</button>
+              <button class="att-history-tab" data-category="hymns"
+                onclick="TomaAttendance.switchHistoryCategory('hymns')">🎵 Hymns</button>
+              <button class="att-history-tab" data-category="bible_study"
+                onclick="TomaAttendance.switchHistoryCategory('bible_study')">💡 Bible Study</button>
             </div>
 
             <div id="attendance-history-container"></div>
@@ -264,7 +295,8 @@
         <section class="tab-panel" id="tab-eftkad_entry">
           <div class="card-container" style="max-width:600px; margin:0 auto;">
             <h3>Record Servant Eftkad Visit</h3>
-            <p style="color:#64748B; font-size:0.9rem; margin-bottom:20px;">Select an individual child and the servant(s) who conducted the visit.</p>
+            <p style="color:#64748B; font-size:0.9rem; margin-bottom:20px;">Select an individual child and the
+              servant(s) who conducted the visit.</p>
 
             <form id="form-eftkad-entry">
               <div class="form-group">
@@ -279,10 +311,12 @@
 
               <div class="form-group">
                 <label class="form-label">Servants Involved</label>
-                <div id="eftkad-servants-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;"></div>
+                <div id="eftkad-servants-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;">
+                </div>
               </div>
 
-              <button type="submit" class="btn btn-gold btn-lg" style="width:100%; margin-top:10px;">Save Eftkad Record</button>
+              <button type="submit" class="btn btn-gold btn-lg" style="width:100%; margin-top:10px;">Save Eftkad
+                Record</button>
             </form>
           </div>
         </section>
@@ -294,7 +328,8 @@
               <h3 style="margin:0;">Eftkad Visit History</h3>
               <div class="search-input-wrap">
                 <span class="search-icon">🔍</span>
-                <input type="text" id="eftkad-search-input" class="form-control" placeholder="Filter by child or servant...">
+                <input type="text" id="eftkad-search-input" class="form-control"
+                  placeholder="Filter by child or servant...">
               </div>
             </div>
             <div id="eftkad-history-container"></div>
@@ -312,15 +347,21 @@
         <!-- 9.5. BIRTHDAY NOTIFICATIONS TAB -->
         <section class="tab-panel" id="tab-notifications">
           <div class="card-container">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
+            <div
+              style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
               <div>
                 <h3 style="margin:0;">🔔 Website Phone & Device Popup Notifications</h3>
-                <p style="color:#64748B; font-size:0.85rem; margin:0;">Automated popup notifications on phone & browser (Chrome/Android/iOS/Desktop) for child birthdays.</p>
+                <p style="color:#64748B; font-size:0.85rem; margin:0;">Automated popup notifications on phone & browser
+                  (Chrome/Android/iOS/Desktop) for child birthdays.</p>
               </div>
               <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="btn btn-gold btn-sm" id="btn-enable-push-notifications">🔔 Enable Phone & Browser Popup Notifications</button>
-                <button class="btn btn-outline btn-sm" onclick="TomaNotifications.triggerSystemPopup('🔔 Test Phone Popup Notification', 'Website birthday popups are working perfectly on your phone & device!')">🧪 Test Phone Popup</button>
-                <button class="btn btn-primary btn-sm" onclick="TomaNotifications.triggerManualEmailCheck()">📧 Send Birthday Emails Now</button>
+                <button class="btn btn-gold btn-sm" id="btn-enable-push-notifications">🔔 Enable Phone & Browser Popup
+                  Notifications</button>
+                <button class="btn btn-outline btn-sm"
+                  onclick="TomaNotifications.triggerSystemPopup('🔔 Test Phone Popup Notification', 'Website birthday popups are working perfectly on your phone & device!')">🧪
+                  Test Phone Popup</button>
+                <button class="btn btn-primary btn-sm" onclick="TomaNotifications.triggerManualEmailCheck()">📧 Send
+                  Birthday Emails Now</button>
               </div>
             </div>
 
@@ -341,7 +382,8 @@
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
               <div>
                 <h3 style="margin:0;">Store Status Control</h3>
-                <span id="store-status-label" style="font-weight:700; font-size:0.95rem; color:#10B981;">STORE ONLINE</span>
+                <span id="store-status-label" style="font-weight:700; font-size:0.95rem; color:#10B981;">STORE
+                  ONLINE</span>
               </div>
               <label class="toggle-switch">
                 <input type="checkbox" id="store-active-toggle" checked>
@@ -373,12 +415,15 @@
             </p>
 
             <div style="display:flex; flex-direction:column; gap:16px;">
-              <button class="btn btn-gold btn-lg" onclick="TomaBackup.exportBackup()">💾 Export Full JSON Backup</button>
-              
+              <button class="btn btn-gold btn-lg" onclick="TomaBackup.exportBackup()">💾 Export Full JSON
+                Backup</button>
+
               <div style="border:2px dashed #CBD5E1; border-radius:12px; padding:24px; background:#FAF8F5;">
                 <p style="font-weight:600; color:#0D2040; margin-bottom:12px;">Restore Backup File</p>
-                <input type="file" id="input-backup-file" accept=".json" onchange="TomaBackup.handleRestoreFile(this.files[0])" style="display:none;">
-                <button class="btn btn-outline" onclick="document.getElementById('input-backup-file').click()">📂 Select Backup JSON File</button>
+                <input type="file" id="input-backup-file" accept=".json"
+                  onchange="TomaBackup.handleRestoreFile(this.files[0])" style="display:none;">
+                <button class="btn btn-outline" onclick="document.getElementById('input-backup-file').click()">📂 Select
+                  Backup JSON File</button>
               </div>
             </div>
           </div>
@@ -408,7 +453,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="TomaUtils.closeModal('modal-add-child')">Cancel</button>
+          <button type="button" class="btn btn-secondary"
+            onclick="TomaUtils.closeModal('modal-add-child')">Cancel</button>
           <button type="submit" class="btn btn-gold">Create Child Record</button>
         </div>
       </form>
@@ -435,7 +481,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="TomaUtils.closeModal('modal-edit-child')">Cancel</button>
+          <button type="button" class="btn btn-secondary"
+            onclick="TomaUtils.closeModal('modal-edit-child')">Cancel</button>
           <button type="submit" class="btn btn-gold">Save Changes</button>
         </div>
       </form>
@@ -456,7 +503,8 @@
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:20px;">
           <div style="background:#FAF8F5; padding:16px; border-radius:10px; border:1px solid #E2E8F0;">
             <span style="font-size:0.8rem; color:#64748B; font-weight:700;">TOTAL SCORE</span>
-            <div id="profile-child-points" style="font-size:1.8rem; font-weight:800; color:var(--gold-dark);">0 Pts</div>
+            <div id="profile-child-points" style="font-size:1.8rem; font-weight:800; color:var(--gold-dark);">0 Pts
+            </div>
           </div>
           <div style="background:#FAF8F5; padding:16px; border-radius:10px; border:1px solid #E2E8F0;">
             <span style="font-size:0.8rem; color:#64748B; font-weight:700;">BIRTHDAY & AGE</span>
@@ -469,16 +517,28 @@
         <h4 style="margin-bottom:10px;">Attendance Statistics</h4>
         <div class="stats-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:20px;">
           <div class="stat-card" style="padding:12px;">
-            <div class="stat-info"><h4>Mass Pct</h4><div class="value" id="profile-mass-pct">0%</div></div>
+            <div class="stat-info">
+              <h4>Mass Pct</h4>
+              <div class="value" id="profile-mass-pct">0%</div>
+            </div>
           </div>
           <div class="stat-card" style="padding:12px;">
-            <div class="stat-info"><h4>Sunday School</h4><div class="value" id="profile-ss-pct">0%</div></div>
+            <div class="stat-info">
+              <h4>Sunday School</h4>
+              <div class="value" id="profile-ss-pct">0%</div>
+            </div>
           </div>
           <div class="stat-card" style="padding:12px;">
-            <div class="stat-info"><h4>Hymns Pct</h4><div class="value" id="profile-hymns-pct">0%</div></div>
+            <div class="stat-info">
+              <h4>Hymns Pct</h4>
+              <div class="value" id="profile-hymns-pct">0%</div>
+            </div>
           </div>
           <div class="stat-card" style="padding:12px;">
-            <div class="stat-info"><h4>Bible Study</h4><div class="value" id="profile-bible-pct">0%</div></div>
+            <div class="stat-info">
+              <h4>Bible Study</h4>
+              <div class="value" id="profile-bible-pct">0%</div>
+            </div>
           </div>
         </div>
 
@@ -500,7 +560,8 @@
         </div>
 
         <!-- QR Code Section -->
-        <div style="text-align:center; padding:16px; background:#FAF8F5; border-radius:12px; border:1px dashed var(--gold-primary);">
+        <div
+          style="text-align:center; padding:16px; background:#FAF8F5; border-radius:12px; border:1px dashed var(--gold-primary);">
           <strong style="display:block; margin-bottom:10px; color:#0D2040;">Child Unique User Portal QR Code</strong>
           <div id="profile-qr-container" style="display:inline-block; margin-bottom:12px;"></div>
           <br>
@@ -531,8 +592,10 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="TomaUtils.closeModal('modal-excel-mapping')">Cancel</button>
-        <button type="button" class="btn btn-gold" onclick="TomaExcelImporter.processMappingAndPreview()">Generate Preview →</button>
+        <button type="button" class="btn btn-secondary"
+          onclick="TomaUtils.closeModal('modal-excel-mapping')">Cancel</button>
+        <button type="button" class="btn btn-gold" onclick="TomaExcelImporter.processMappingAndPreview()">Generate
+          Preview →</button>
       </div>
     </div>
   </div>
@@ -549,8 +612,10 @@
         <div id="excel-preview-container"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="TomaUtils.closeModal('modal-excel-preview')">Cancel</button>
-        <button type="button" class="btn btn-gold" onclick="TomaExcelImporter.confirmBatchImport()">Import Valid Children</button>
+        <button type="button" class="btn btn-secondary"
+          onclick="TomaUtils.closeModal('modal-excel-preview')">Cancel</button>
+        <button type="button" class="btn btn-gold" onclick="TomaExcelImporter.confirmBatchImport()">Import Valid
+          Children</button>
       </div>
     </div>
   </div>
@@ -567,7 +632,8 @@
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Event / Rule Name *</label>
-            <input type="text" id="rule-name" class="form-control" placeholder="e.g. Mass Attendance or Bible Competition" required>
+            <input type="text" id="rule-name" class="form-control"
+              placeholder="e.g. Mass Attendance or Bible Competition" required>
           </div>
           <div class="form-group">
             <label class="form-label">Event Category</label>
@@ -675,4 +741,5 @@
   <script src="../js/admin-app.js"></script>
 
 </body>
+
 </html>
