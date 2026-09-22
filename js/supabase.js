@@ -813,7 +813,9 @@
     getPurchases: async function () {
       const client = getSupabaseClient();
       const db = getDB();
+      const localPurchases = (db.purchases || []).filter(p => p && p.child_id && p.gift_id);
 
+      let fetchedPurchases = [];
       if (client) {
         try {
           let res = await client.from('purchases').select('*').order('purchased_at', { ascending: false });
@@ -824,39 +826,19 @@
             res = await client.from('purchases').select('*');
           }
           if (!res.error && res.data) {
-            const valid = res.data.filter(p => p && p.child_id && p.gift_id);
-            const uniquePurchases = [];
-            const seenIds = new Set();
-
-            valid.forEach(p => {
-              const idKey = String(p.id);
-              if (!seenIds.has(idKey)) {
-                seenIds.add(idKey);
-                uniquePurchases.push(p);
-              }
-            });
-
-            uniquePurchases.sort((a, b) => {
-              const dA = new Date(a.purchased_at || a.created_at || 0);
-              const dB = new Date(b.purchased_at || b.created_at || 0);
-              return dB - dA;
-            });
-
-            db.purchases = uniquePurchases;
-            saveDB(db);
-            return uniquePurchases;
+            fetchedPurchases = res.data.filter(p => p && p.child_id && p.gift_id);
           }
         } catch (e) {
           console.warn('Supabase getPurchases error:', e);
         }
       }
 
-      // Offline / LocalStorage Fallback
-      const localPurchases = (db.purchases || []).filter(p => p && p.child_id && p.gift_id);
+      // Merge Supabase fetched data with local purchases (prioritizing Supabase data)
+      const combined = [...fetchedPurchases, ...localPurchases];
       const uniquePurchases = [];
       const seenIds = new Set();
 
-      localPurchases.forEach(p => {
+      combined.forEach(p => {
         const idKey = String(p.id);
         if (!seenIds.has(idKey)) {
           seenIds.add(idKey);
@@ -870,6 +852,8 @@
         return dB - dA;
       });
 
+      db.purchases = uniquePurchases;
+      saveDB(db);
       return uniquePurchases;
     },
 

@@ -167,7 +167,7 @@ window.TomaStore = {
               const dateStr = p.purchased_at || p.created_at || new Date().toISOString();
               return `
                 <tr>
-                  <td>${TomaUtils.formatDate(dateStr)}</td>
+                  <td>${TomaUtils.formatDateTime(dateStr)}</td>
                   <td><strong>${child ? child.name : 'Child ID #' + p.child_id}</strong></td>
                   <td><span class="child-code">${child ? child.child_code : 'N/A'}</span></td>
                   <td>🎁 ${gift ? gift.name : 'Gift Item #' + p.gift_id}</td>
