@@ -1,0 +1,236 @@
+-- ====================================================================
+-- Toma el Rasol - Complete Supabase SQL Database Migration Script
+-- ====================================================================
+-- Execute this script in your Supabase SQL Editor to create tables,
+-- relationships, constraints, indexes, and Row Level Security (RLS) policies.
+-- ====================================================================
+
+-- 1. EXTENSIONS
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 2. TABLES
+
+-- Children Table
+CREATE TABLE IF NOT EXISTS public.children (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    child_code VARCHAR(20) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    birth_date DATE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Admin Users Table
+CREATE TABLE IF NOT EXISTS public.admins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('general_admin', 'attendance_admin')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Attendance Types Table
+CREATE TABLE IF NOT EXISTS public.attendance_types (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Attendance Records Table
+CREATE TABLE IF NOT EXISTS public.attendance_records (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    child_id UUID NOT NULL REFERENCES public.children(id) ON DELETE CASCADE,
+    attendance_type_id UUID NOT NULL REFERENCES public.attendance_types(id) ON DELETE CASCADE,
+    attendance_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    recorded_by VARCHAR(100) DEFAULT 'admin',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_child_date_event UNIQUE (child_id, attendance_type_id, attendance_date)
+);
+
+-- Automatic Point Rules Table
+CREATE TABLE IF NOT EXISTS public.point_rules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_name VARCHAR(150) NOT NULL,
+    event_type VARCHAR(50) NOT NULL,
+    points INTEGER NOT NULL DEFAULT 10,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Point Transactions Audit Table
+CREATE TABLE IF NOT EXISTS public.point_transactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    child_id UUID NOT NULL REFERENCES public.children(id) ON DELETE CASCADE,
+    points INTEGER NOT NULL,
+    source_type VARCHAR(50) NOT NULL CHECK (source_type IN ('attendance', 'manual', 'custom_rule', 'purchase')),
+    source_id VARCHAR(255),
+    description TEXT,
+    created_by VARCHAR(100) DEFAULT 'admin',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Eftkad Visit Records Table
+CREATE TABLE IF NOT EXISTS public.eftkad_records (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    child_id UUID NOT NULL REFERENCES public.children(id) ON DELETE CASCADE,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_by VARCHAR(100) DEFAULT 'admin',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Eftkad Servants Pairing Table
+CREATE TABLE IF NOT EXISTS public.eftkad_servants (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    eftkad_record_id UUID NOT NULL REFERENCES public.eftkad_records(id) ON DELETE CASCADE,
+    servant_name VARCHAR(150) NOT NULL
+);
+
+-- Store Gifts Catalog Table
+CREATE TABLE IF NOT EXISTS public.gifts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    image_url TEXT,
+    points_price INTEGER NOT NULL DEFAULT 100,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Store Purchases Table
+CREATE TABLE IF NOT EXISTS public.purchases (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    child_id UUID NOT NULL REFERENCES public.children(id) ON DELETE CASCADE,
+    gift_id UUID NOT NULL REFERENCES public.gifts(id) ON DELETE CASCADE,
+    points_price INTEGER NOT NULL,
+    status VARCHAR(50) DEFAULT 'purchased',
+    purchased_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_child_active_purchase UNIQUE (child_id)
+);
+
+-- System Settings Table
+CREATE TABLE IF NOT EXISTS public.system_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. INDEXES FOR FAST QUERY PERFORMANCE
+CREATE INDEX IF NOT EXISTS idx_children_code ON public.children(child_code);
+CREATE INDEX IF NOT EXISTS idx_att_records_child_date ON public.attendance_records(child_id, attendance_date);
+CREATE INDEX IF NOT EXISTS idx_pt_tx_child ON public.point_transactions(child_id);
+CREATE INDEX IF NOT EXISTS idx_eftkad_child ON public.eftkad_records(child_id);
+CREATE INDEX IF NOT EXISTS idx_purchases_child ON public.purchases(child_id);
+
+-- 4. INITIAL SEED DATA
+
+INSERT INTO public.attendance_types (code, name) VALUES
+('mass', 'Mass Attendance'),
+('sunday_school', 'Sunday School Attendance'),
+('hymns', 'Hymns Attendance'),
+('bible_study', 'Bible Study Attendance')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO public.point_rules (event_name, event_type, points) VALUES
+('Mass Attendance', 'mass', 10),
+('Sunday School Attendance', 'sunday_school', 10),
+('Hymns Attendance', 'hymns', 5),
+('Bible Study Attendance', 'bible_study', 8),
+('Bible Competition', 'custom', 50),
+('Helping Service', 'custom', 20)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.system_settings (key, value) VALUES
+('store_active', 'true')
+ON CONFLICT (key) DO NOTHING;
+
+-- 5. ROW LEVEL SECURITY (RLS) POLICIES
+
+ALTER TABLE public.children ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.point_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.point_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.eftkad_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.gifts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.purchases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
+
+-- Allow Public Read Access for User Portal & QR Page
+CREATE POLICY "Public Read Access Children" ON public.children FOR SELECT USING (true);
+CREATE POLICY "Public Read Access Point Transactions" ON public.point_transactions FOR SELECT USING (true);
+CREATE POLICY "Public Read Access Attendance" ON public.attendance_records FOR SELECT USING (true);
+CREATE POLICY "Public Read Access Gifts" ON public.gifts FOR SELECT USING (true);
+CREATE POLICY "Public Read Access Purchases" ON public.purchases FOR SELECT USING (true);
+CREATE POLICY "Public Insert Purchase" ON public.purchases FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public Read Settings" ON public.system_settings FOR SELECT USING (true);
+
+-- 6. 24/7 AUTOMATED CLOUD BIRTHDAY CRON JOB (STRICTLY 1 DAY BEFORE BIRTHDATE)
+-- Runs 24/7 on Supabase Cloud servers every night at midnight (00:00)
+-- Checks for children whose birthday is TOMORROW and triggers automated phone notifications
+
+CREATE EXTENSION IF NOT EXISTS "pg_cron";
+
+-- Function to find tomorrow's birthdays (strictly 1 day in advance)
+CREATE OR REPLACE FUNCTION public.check_tomorrow_birthdays()
+RETURNS TABLE (
+    child_code VARCHAR(20),
+    child_name VARCHAR(255),
+    birth_date DATE,
+    upcoming_age INT
+) 
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.child_code,
+        c.name AS child_name,
+        c.birth_date,
+        (EXTRACT(YEAR FROM (CURRENT_DATE + INTERVAL '1 day')) - EXTRACT(YEAR FROM c.birth_date))::INT AS upcoming_age
+    FROM public.children c
+    WHERE 
+        EXTRACT(MONTH FROM c.birth_date) = EXTRACT(MONTH FROM (CURRENT_DATE + INTERVAL '1 day'))
+        AND EXTRACT(DAY FROM c.birth_date) = EXTRACT(DAY FROM (CURRENT_DATE + INTERVAL '1 day'));
+END;
+$$;
+
+-- Function to find all birthdays in current month (for beginning of month roster email)
+CREATE OR REPLACE FUNCTION public.check_monthly_birthdays()
+RETURNS TABLE (
+    child_code VARCHAR(20),
+    child_name VARCHAR(255),
+    birth_date DATE
+) 
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.child_code,
+        c.name AS child_name,
+        c.birth_date
+    FROM public.children c
+    WHERE 
+        EXTRACT(MONTH FROM c.birth_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+    ORDER BY EXTRACT(DAY FROM c.birth_date) ASC;
+END;
+$$;
+
+-- Schedule 24/7 Midnight Cron Job for Tomorrow's Birthday Reminder (Every night at 00:00)
+SELECT cron.schedule(
+    'tomorrow-birthday-reminder-job',
+    '0 0 * * *',
+    $$ SELECT public.check_tomorrow_birthdays(); $$
+);
+
+-- Schedule Beginning of Month Cron Job for Monthly Birthday Roster Email (1st day of month at 00:00)
+SELECT cron.schedule(
+    'monthly-birthday-roster-job',
+    '0 0 1 * *',
+    $$ SELECT public.check_monthly_birthdays(); $$
+);
+

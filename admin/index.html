@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Toma el Rasol</title>
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="../css/global.css">
+  <link rel="stylesheet" href="../css/admin.css">
+
+  <!-- QRCode.js library CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- SheetJS (Excel Parser) CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- JSZip & FileSaver (Batch QR ZIP Export) CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+
+  <div class="admin-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="admin-sidebar" id="admin-sidebar">
+      <div class="sidebar-header">
+        <img src="../assets/logo/logo.jpeg" alt="Logo" class="sidebar-logo">
+        <div class="sidebar-brand">
+          <h2>Toma el Rasol</h2>
+          <span>Admin Dashboard</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-tab="kashf">
+          <span class="icon">📋</span> Kashf (Children)
+        </a>
+        <a class="nav-item" data-tab="leaderboard">
+          <span class="icon">🏆</span> Leaderboard
+        </a>
+        <a class="nav-item" data-tab="score">
+          <span class="icon">⭐</span> Manual Score
+        </a>
+        <a class="nav-item" data-tab="points_system">
+          <span class="icon">⚙️</span> Points System
+        </a>
+        <a class="nav-item" data-tab="attendance">
+          <span class="icon">📅</span> Record Attendance
+        </a>
+        <a class="nav-item" data-tab="attendance_history">
+          <span class="icon">📜</span> Attendance History
+        </a>
+        <a class="nav-item" data-tab="eftkad_entry">
+          <span class="icon">🤝</span> Eftkad Entry
+        </a>
+        <a class="nav-item" data-tab="eftkad_history">
+          <span class="icon">📖</span> Eftkad History
+        </a>
+        <a class="nav-item" data-tab="birthdays">
+          <span class="icon">🎂</span> Birthdays
+        </a>
+        <a class="nav-item" data-tab="notifications">
+          <span class="icon">🔔</span> Birthday Notifications
+        </a>
+        <a class="nav-item" data-tab="store">
+          <span class="icon">🎁</span> Store & Presents
+        </a>
+        <a class="nav-item" data-tab="backup">
+          <span class="icon">💾</span> Data Backup
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div>
+            <strong id="current-username-display" style="display:block; font-size:0.9rem; color:#fff;">Admin</strong>
+            <span id="current-user-role-badge" class="user-role-badge badge-gold">General Admin</span>
+          </div>
+          <button class="btn btn-outline-gold btn-sm" onclick="TomaAuth.logout()" title="Logout">🚪</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+      <header class="admin-header">
+        <button class="mobile-menu-btn" onclick="document.getElementById('admin-sidebar').classList.toggle('open')">☰</button>
+        <div class="page-title">
+          <h1 id="active-tab-title">Kashf — Child Management</h1>
+        </div>
+        <div>
+          <a href="../Toma_elrasol.html" class="btn btn-outline btn-sm">🏠 Gateway Launcher</a>
+        </div>
+      </header>
+
+      <div class="admin-container">
+        
+        <!-- 1. KASHF TAB -->
+        <section class="tab-panel active" id="tab-kashf">
+          <div class="card-header-actions">
+            <div class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="kashf-search-input" class="form-control" placeholder="Search by name or Child ID...">
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <input type="file" id="input-excel-file" accept=".xlsx, .xls, .csv" onchange="TomaExcelImporter.handleFileUpload(this.files[0])" style="display:none;">
+              <button class="btn btn-outline-gold" onclick="document.getElementById('input-excel-file').click()">📊 Import from Excel</button>
+              <button class="btn btn-primary" onclick="TomaQR.exportAllQRCodesZip()">📥 Export All QR Codes (ZIP)</button>
+              <button class="btn btn-gold" onclick="TomaUtils.openModal('modal-add-child')">+ Add Child Manually</button>
+            </div>
+          </div>
+
+          <div class="children-grid" id="kashf-children-grid">
+            <!-- Dynamic Render -->
+          </div>
+        </section>
+
+        <!-- 2. LEADERBOARD TAB -->
+        <section class="tab-panel" id="tab-leaderboard">
+          <div class="card-container">
+            <div class="card-header-actions">
+              <h3>Class Points Leaderboard</h3>
+              <div class="search-input-wrap">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="lb-search-input" class="form-control" placeholder="Filter leaderboard...">
+              </div>
+            </div>
+            <div id="admin-leaderboard-container"></div>
+          </div>
+        </section>
+
+        <!-- 3. SCORE TAB (MANUAL ADJUSTMENT) -->
+        <section class="tab-panel" id="tab-score">
+          <div class="card-container" style="margin-bottom:24px;">
+            <h3>Manual Score Adjustment</h3>
+            <p style="color:#64748B; font-size:0.9rem; margin-bottom:16px;">
+              Select one or multiple children, specify points to add (+20) or subtract (-10), and apply adjustment.
+            </p>
+
+            <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                  <input type="text" id="score-search-input" class="form-control" placeholder="Search children..." style="max-width:260px;">
+                  <div>
+                    <button class="btn btn-secondary btn-sm" onclick="TomaPointsEngine.selectAll(true)">Check All</button>
+                    <button class="btn btn-secondary btn-sm" onclick="TomaPointsEngine.selectAll(false)">Uncheck All</button>
+                  </div>
+                </div>
+                <div class="attendance-list" id="score-children-list" style="max-height:350px; overflow-y:auto;"></div>
+              </div>
+
+              <div style="background:#FAF8F5; padding:20px; border-radius:12px; border:1px solid #E2E8F0; height:fit-content;">
+                <div class="form-group">
+                  <label class="form-label">Points Value (+ / -)</label>
+                  <input type="number" id="score-points-value" class="form-control" placeholder="e.g. +20 or -10" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Reason / Audit Note</label>
+                  <input type="text" id="score-reason-note" class="form-control" placeholder="e.g. Special Activity Award">
+                </div>
+                <button class="btn btn-gold" id="btn-apply-manual-points" style="width:100%;">Apply Points</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-container">
+            <h3>Score Adjustment Audit Log</h3>
+            <div id="score-audit-container"></div>
+          </div>
+        </section>
+
+        <!-- 4. POINTS SYSTEM TAB (RULES) -->
+        <section class="tab-panel" id="tab-points_system">
+          <div class="card-container">
+            <div class="card-header-actions">
+              <div>
+                <h3 style="margin:0;">Automatic Points Rules</h3>
+                <p style="color:#64748B; font-size:0.85rem; margin:0;">Configure points automatically awarded when attendance or custom events are logged.</p>
+              </div>
+              <button class="btn btn-gold" onclick="TomaPointsEngine.openAddRuleModal()">+ Create New Rule</button>
+            </div>
+            <div id="rules-table-container"></div>
+          </div>
+        </section>
+
+        <!-- 5. ATTENDANCE TAB -->
+        <section class="tab-panel" id="tab-attendance">
+          <div class="card-container">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
+              <div>
+                <h3 style="margin:0;">Record Class Attendance</h3>
+                <p style="color:#64748B; font-size:0.85rem; margin:0;">Select date, category, present children, and click Save Attendance.</p>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="font-weight:600; font-size:0.9rem;">Date:</label>
+                <input type="date" id="att-date-picker" class="form-control" style="width:auto;">
+              </div>
+            </div>
+
+            <!-- Attendance Category Tabs -->
+            <div class="attendance-type-selector">
+              <button class="att-tab" data-category="mass" onclick="TomaAttendance.switchCategory('mass')">⛪ Mass</button>
+              <button class="att-tab active" data-category="sunday_school" onclick="TomaAttendance.switchCategory('sunday_school')">📖 Sunday School</button>
+              <button class="att-tab" data-category="hymns" onclick="TomaAttendance.switchCategory('hymns')">🎵 Hymns</button>
+              <button class="att-tab" data-category="bible_study" onclick="TomaAttendance.switchCategory('bible_study')">💡 Bible Study</button>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <input type="text" id="att-search-input" class="form-control" placeholder="Search child..." style="max-width:280px;">
+              <div>
+                <button class="btn btn-secondary btn-sm" onclick="TomaAttendance.selectAll(true)">Select All</button>
+                <button class="btn btn-secondary btn-sm" onclick="TomaAttendance.selectAll(false)">Deselect All</button>
+              </div>
+            </div>
+
+            <div class="attendance-list" id="attendance-children-list" style="max-height:400px; overflow-y:auto; margin-bottom:20px;"></div>
+
+            <button class="btn btn-gold btn-lg" id="btn-save-attendance" style="width:100%;">Save Attendance & Award Automatic Points</button>
+          </div>
+        </section>
+
+        <!-- 6. ATTENDANCE HISTORY TAB -->
+        <section class="tab-panel" id="tab-attendance-history">
+          <div class="card-container">
+            <h3>Attendance History Log</h3>
+            <div id="attendance-history-container"></div>
+          </div>
+        </section>
+
+        <!-- 7. EFTKAD ENTRY TAB -->
+        <section class="tab-panel" id="tab-eftkad_entry">
+          <div class="card-container" style="max-width:600px; margin:0 auto;">
+            <h3>Record Servant Eftkad Visit</h3>
+            <p style="color:#64748B; font-size:0.9rem; margin-bottom:20px;">Select an individual child and the servant(s) who conducted the visit.</p>
+
+            <form id="form-eftkad-entry">
+              <div class="form-group">
+                <label class="form-label">Visit Date</label>
+                <input type="date" id="eftkad-date" class="form-control" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Child</label>
+                <select id="eftkad-child-select" class="form-control" required></select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Servants Involved</label>
+                <div id="eftkad-servants-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;"></div>
+              </div>
+
+              <button type="submit" class="btn btn-gold btn-lg" style="width:100%; margin-top:10px;">Save Eftkad Record</button>
+            </form>
+          </div>
+        </section>
+
+        <!-- 8. EFTKAD HISTORY TAB -->
+        <section class="tab-panel" id="tab-eftkad_history">
+          <div class="card-container">
+            <div class="card-header-actions">
+              <h3 style="margin:0;">Eftkad Visit History</h3>
+              <div class="search-input-wrap">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="eftkad-search-input" class="form-control" placeholder="Filter by child or servant...">
+              </div>
+            </div>
+            <div id="eftkad-history-container"></div>
+          </div>
+        </section>
+
+        <!-- 9. BIRTHDAYS TAB -->
+        <section class="tab-panel" id="tab-birthdays">
+          <div class="card-container">
+            <h3 style="margin-bottom:16px;">Children Birthdays Calendar</h3>
+            <div id="admin-birthdays-container"></div>
+          </div>
+        </section>
+
+        <!-- 9.5. BIRTHDAY NOTIFICATIONS TAB -->
+        <section class="tab-panel" id="tab-notifications">
+          <div class="card-container">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
+              <div>
+                <h3 style="margin:0;">🔔 Website Phone & Device Popup Notifications</h3>
+                <p style="color:#64748B; font-size:0.85rem; margin:0;">Automated popup notifications on phone & browser (Chrome/Android/iOS/Desktop) for child birthdays.</p>
+              </div>
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn btn-gold btn-sm" id="btn-enable-push-notifications">🔔 Enable Phone & Browser Popup Notifications</button>
+                <button class="btn btn-outline btn-sm" onclick="TomaNotifications.triggerSystemPopup('🔔 Test Phone Popup Notification', 'Website birthday popups are working perfectly on your phone & device!')">🧪 Test Phone Popup</button>
+              </div>
+            </div>
+
+            <!-- Today's Birthdays Alerts -->
+            <div id="today-birthdays-container"></div>
+
+            <!-- Tomorrow's Birthdays Alerts (1-Day Advance) -->
+            <div id="tomorrow-birthdays-container"></div>
+
+            <!-- Monthly Birthday Summary -->
+            <div id="monthly-birthdays-container"></div>
+          </div>
+        </section>
+
+        <!-- 10. STORE TAB -->
+        <section class="tab-panel" id="tab-store">
+          <div class="card-container" style="margin-bottom:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+              <div>
+                <h3 style="margin:0;">Store Status Control</h3>
+                <span id="store-status-label" style="font-weight:700; font-size:0.95rem; color:#10B981;">STORE ONLINE</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="store-active-toggle" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="card-container" style="margin-bottom:24px;">
+            <div class="card-header-actions">
+              <h3>Gift Catalog</h3>
+              <button class="btn btn-gold" onclick="TomaStore.openAddGiftModal()">+ Add New Gift Item</button>
+            </div>
+            <div class="children-grid" id="admin-gifts-grid"></div>
+          </div>
+
+          <div class="card-container">
+            <h3>Purchases Audit Log</h3>
+            <div id="admin-purchases-container"></div>
+          </div>
+        </section>
+
+        <!-- 11. DATA BACKUP TAB -->
+        <section class="tab-panel" id="tab-backup">
+          <div class="card-container" style="max-width:600px; margin:0 auto; text-align:center;">
+            <h3>Data Management & Backup / Restore</h3>
+            <p style="color:#64748B; margin-bottom:24px;">
+              Export full application data to JSON backup file, or upload a JSON backup to restore state.
+            </p>
+
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <button class="btn btn-gold btn-lg" onclick="TomaBackup.exportBackup()">💾 Export Full JSON Backup</button>
+              
+              <div style="border:2px dashed #CBD5E1; border-radius:12px; padding:24px; background:#FAF8F5;">
+                <p style="font-weight:600; color:#0D2040; margin-bottom:12px;">Restore Backup File</p>
+                <input type="file" id="input-backup-file" accept=".json" onchange="TomaBackup.handleRestoreFile(this.files[0])" style="display:none;">
+                <button class="btn btn-outline" onclick="document.getElementById('input-backup-file').click()">📂 Select Backup JSON File</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODALS -->
+  <!-- 1. Add Child Modal -->
+  <div class="modal-overlay" id="modal-add-child">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Add Child Manually</h3>
+        <button class="modal-close" onclick="TomaUtils.closeModal('modal-add-child')">×</button>
+      </div>
+      <form id="form-add-child">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Full Child Name *</label>
+            <input type="text" id="input-child-name" class="form-control" placeholder="e.g. Ahmed Boutros" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Birthdate *</label>
+            <input type="date" id="input-child-dob" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="TomaUtils.closeModal('modal-add-child')">Cancel</button>
+          <button type="submit" class="btn btn-gold">Create Child Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Edit Child Modal -->
+  <div class="modal-overlay" id="modal-edit-child">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Edit Child Information</h3>
+        <button class="modal-close" onclick="TomaUtils.closeModal('modal-edit-child')">×</button>
+      </div>
+      <form id="form-edit-child">
+        <input type="hidden" id="edit-child-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Child Name</label>
+            <input type="text" id="edit-child-name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Birthdate</label>
+            <input type="date" id="edit-child-dob" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="TomaUtils.closeModal('modal-edit-child')">Cancel</button>
+          <button type="submit" class="btn btn-gold">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Child Profile Modal -->
+  <div class="modal-overlay" id="modal-child-profile">
+    <div class="modal-content" style="max-width:620px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="profile-child-name">Child Name</h3>
+          <span class="child-code" id="profile-child-code">CH-0000</span>
+        </div>
+        <button class="modal-close" onclick="TomaUtils.closeModal('modal-child-profile')">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:20px;">
+          <div style="background:#FAF8F5; padding:16px; border-radius:10px; border:1px solid #E2E8F0;">
+            <span style="font-size:0.8rem; color:#64748B; font-weight:700;">TOTAL SCORE</span>
+            <div id="profile-child-points" style="font-size:1.8rem; font-weight:800; color:var(--gold-dark);">0 Pts</div>
+          </div>
+          <div style="background:#FAF8F5; padding:16px; border-radius:10px; border:1px solid #E2E8F0;">
+            <span style="font-size:0.8rem; color:#64748B; font-weight:700;">BIRTHDAY & AGE</span>
+            <div style="font-size:1.1rem; font-weight:700; color:#0D2040;" id="profile-child-dob">N/A</div>
+            <span style="font-size:0.85rem; color:#64748B;"><span id="profile-child-age">0</span> years old</span>
+          </div>
+        </div>
+
+        <!-- Attendance Stats Grid -->
+        <h4 style="margin-bottom:10px;">Attendance Statistics</h4>
+        <div class="stats-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:20px;">
+          <div class="stat-card" style="padding:12px;">
+            <div class="stat-info"><h4>Mass Pct</h4><div class="value" id="profile-mass-pct">0%</div></div>
+          </div>
+          <div class="stat-card" style="padding:12px;">
+            <div class="stat-info"><h4>Sunday School</h4><div class="value" id="profile-ss-pct">0%</div></div>
+          </div>
+          <div class="stat-card" style="padding:12px;">
+            <div class="stat-info"><h4>Hymns Pct</h4><div class="value" id="profile-hymns-pct">0%</div></div>
+          </div>
+          <div class="stat-card" style="padding:12px;">
+            <div class="stat-info"><h4>Bible Study</h4><div class="value" id="profile-bible-pct">0%</div></div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:20px;">
+          <div>
+            <strong>Last Attendance:</strong>
+            <div style="font-size:0.85rem; color:#64748B; margin-top:4px;">
+              • Mass: <span id="profile-last-mass">Never</span><br>
+              • Sunday School: <span id="profile-last-ss">Never</span>
+            </div>
+          </div>
+          <div>
+            <strong>Active Streaks:</strong>
+            <div style="font-size:0.85rem; color:#64748B; margin-top:4px;">
+              • Mass Streak: 🔥 <span id="profile-mass-streak">0 wks</span><br>
+              • Sunday School: 🔥 <span id="profile-ss-streak">0 wks</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- QR Code Section -->
+        <div style="text-align:center; padding:16px; background:#FAF8F5; border-radius:12px; border:1px dashed var(--gold-primary);">
+          <strong style="display:block; margin-bottom:10px; color:#0D2040;">Child Unique User Portal QR Code</strong>
+          <div id="profile-qr-container" style="display:inline-block; margin-bottom:12px;"></div>
+          <br>
+          <button class="btn btn-gold btn-sm" id="btn-download-qr">📥 Download Printable QR Code</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Excel Mapping Modal -->
+  <div class="modal-overlay" id="modal-excel-mapping">
+    <div class="modal-content" style="max-width:500px;">
+      <div class="modal-header">
+        <h3>Map Excel Columns</h3>
+        <button class="modal-close" onclick="TomaUtils.closeModal('modal-excel-mapping')">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.9rem; color:#64748B; margin-bottom:16px;">
+          Select which columns in your Excel file correspond to the application fields.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Child Name Column *</label>
+          <select id="excel-map-name" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Birthdate Column *</label>
+          <select id="excel-map-dob" class="form-control"></select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="TomaUtils.closeModal('modal-excel-mapping')">Cancel</button>
+        <button type="button" class="btn btn-gold" onclick="TomaExcelImporter.processMappingAndPreview()">Generate Preview →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Excel Preview Modal -->
+  <div class="modal-overlay" id="modal-excel-preview">
+    <div class="modal-content" style="max-width:640px;">
+      <div class="modal-header">
+        <h3>Preview Excel Import Data</h3>
+        <button class="modal-close" onclick="TomaUtils.closeModal('modal-excel-preview')">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="excel-preview-summary" style="margin-bottom:14px; font-size:0.95rem;"></div>
+        <div id="excel-preview-container"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="TomaUtils.closeModal('modal-excel-preview')">Cancel</button>
+        <button type="button" class="btn btn-gold" onclick="TomaExcelImporter.confirmBatchImport()">Import Valid Children</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Point Rule Modal -->
+  <div class="modal-overlay" id="modal-rule">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Configure Point Rule</h3>
+        <button class="modal-close" onclick="TomaUtils.closeModal('modal-rule')">×</button>
+      </div>
+      <form id="form-rule">
+        <input type="hidden" id="rule-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Event / Rule Name *</label>
+            <input type="text" id="rule-name" class="form-control" placeholder="e.g. Mass Attendance or Bible Competition" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Event Category</label>
+            <select id="rule-type" class="form-control">
+              <option value="mass">Mass Attendance</option>
+              <option value="sunday_school">Sunday School Attendance</option>
+              <option value="hymns">Hymns Attendance</option>
+              <option value="bible_study">Bible Study Attendance</option>
+              <option value="custom">New Custom Event</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Points to Award (+)</label>
+            <input type="number" id="rule-points" class="form-control" placeholder="10" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="TomaUtils.closeModal('modal-rule')">Cancel</button>
+          <button type="submit" class="btn btn-gold">Save Point Rule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 7. Gift Item Modal -->
+  <div class="modal-overlay" id="modal-gift">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Add / Edit Gift Item</h3>
+        <button class="modal-close" onclick="TomaUtils.closeModal('modal-gift')">×</button>
+      </div>
+      <form id="form-gift">
+        <input type="hidden" id="gift-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Gift Item Name *</label>
+            <input type="text" id="gift-name" class="form-control" placeholder="e.g. Football" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Points Price *</label>
+            <input type="number" id="gift-price" class="form-control" placeholder="250" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <input type="text" id="gift-desc" class="form-control" placeholder="e.g. Official size leather ball">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Image URL</label>
+            <input type="url" id="gift-image" class="form-control" placeholder="https://images.unsplash.com/...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="TomaUtils.closeModal('modal-gift')">Cancel</button>
+          <button type="submit" class="btn btn-gold">Save Gift</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 8. Clean Admin Login Modal (No hardcoded passwords displayed) -->
+  <div class="modal-overlay" id="modal-login">
+    <div class="modal-content" style="max-width:400px;">
+      <div class="modal-header">
+        <h3>Admin Portal Login</h3>
+      </div>
+      <form id="form-admin-login">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" id="login-username" class="form-control" placeholder="Enter username..." required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-gold" style="width:100%;">Sign In</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Application Scripts -->
+  <script src="../js/config.js"></script>
+  <script src="../js/email-config.js"></script>
+  <script src="../js/email-service.js"></script>
+  <script src="../js/supabase.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/excel-importer.js"></script>
+  <script src="../js/qr-engine.js"></script>
+  <script src="../js/streaks.js"></script>
+  <script src="../js/children.js"></script>
+  <script src="../js/attendance.js"></script>
+  <script src="../js/eftkad.js"></script>
+  <script src="../js/store.js"></script>
+  <script src="../js/leaderboard.js"></script>
+  <script src="../js/birthdays.js"></script>
+  <script src="../js/notifications.js"></script>
+  <script src="../js/points-engine.js"></script>
+  <script src="../js/backup.js"></script>
+  <script src="../js/admin-app.js"></script>
+
+</body>
+</html>
