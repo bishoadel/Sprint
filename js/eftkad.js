@@ -145,25 +145,51 @@ window.TomaEftkad = {
               <th>Child Name</th>
               <th>Child ID</th>
               <th>Servants Involved</th>
+              <th style="text-align:center;">Action</th>
             </tr>
           </thead>
           <tbody>
             ${filtered.map(r => {
-      const child = (r.children && r.children.name) ? r.children : childMap.get(String(r.child_id));
-      const servantsArr = Array.isArray(r.servants) ? r.servants : (typeof r.servants === 'string' ? r.servants.replace(/[{}]/g, '').split(',') : []);
-      return `
+              const child = (r.children && r.children.name) ? r.children : childMap.get(String(r.child_id));
+              const servantsArr = Array.isArray(r.servants) ? r.servants : (typeof r.servants === 'string' ? r.servants.replace(/[{}]/g, '').split(',') : []);
+              const childName = child ? child.name : 'Child Record';
+              return `
                 <tr>
                   <td><strong>${TomaUtils.formatDate(r.date)}</strong></td>
-                  <td>${child ? child.name : 'Child Record'}</td>
+                  <td>${childName}</td>
                   <td><span class="child-code">${child ? child.child_code : 'N/A'}</span></td>
                   <td>${servantsArr.map(s => `<span class="badge badge-gold" style="margin-right:4px;">👤 ${String(s).trim()}</span>`).join('')}</td>
+                  <td style="text-align:center;">
+                    <button class="btn btn-outline-danger btn-sm" onclick="TomaEftkad.confirmDeleteRecord('${r.id}', '${r.child_id}', '${r.date}', '${childName.replace(/'/g, "\\'")}')" title="Delete Eftkad visit record">
+                      🗑️ Delete
+                    </button>
+                  </td>
                 </tr>
               `;
-    }).join('')}
+            }).join('')}
           </tbody>
         </table>
       </div>
     `;
+  },
+
+  confirmDeleteRecord: function (recordId, childId, dateStr, childName) {
+    TomaUtils.showConfirmModal({
+      title: 'Delete Eftkad Record',
+      message: `Are you sure you want to delete the Eftkad visit record for "${childName}" on ${TomaUtils.formatDate(dateStr)}?`,
+      icon: '🗑️',
+      confirmText: 'Yes, Delete',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        try {
+          await TomaDB.deleteEftkadRecord(recordId, childId, dateStr);
+          TomaUtils.showToast(`Deleted Eftkad record for ${childName}.`, 'success');
+          await this.renderEftkadHistory();
+        } catch (err) {
+          TomaUtils.showToast(err.message || 'Failed to delete Eftkad record.', 'error');
+        }
+      }
+    });
   },
 
   setupEventListeners: function () {

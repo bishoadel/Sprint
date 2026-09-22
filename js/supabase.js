@@ -668,6 +668,31 @@
       return newRecord;
     },
 
+    deleteEftkadRecord: async function (recordId, childId, dateStr) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          if (recordId) {
+            await client.from('eftkad_records').delete().eq('id', recordId);
+          }
+          if (childId && dateStr) {
+            await client.from('eftkad_records').delete().eq('child_id', childId).eq('date', dateStr);
+          }
+        } catch (e) {
+          console.warn('Supabase deleteEftkadRecord error:', e);
+        }
+      }
+
+      const db = getDB();
+      db.eftkad_records = (db.eftkad_records || []).filter(r => {
+        if (recordId && String(r.id) === String(recordId)) return false;
+        if (childId && dateStr && String(r.child_id) === String(childId) && r.date === dateStr) return false;
+        return true;
+      });
+      saveDB(db);
+      return true;
+    },
+
     // --- STORE & PURCHASES ---
     getGifts: async function () {
       const client = getSupabaseClient();
