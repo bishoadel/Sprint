@@ -41,6 +41,8 @@ window.TomaAdminApp = {
     let defaultTab = 'kashf';
     if (TomaAuth.isAttendanceAdmin()) {
       defaultTab = 'attendance';
+    } else if (TomaAuth.isTDashAdmin()) {
+      defaultTab = 'score';
     }
 
     this.switchTab(defaultTab);
@@ -53,9 +55,15 @@ window.TomaAdminApp = {
         e.preventDefault();
         const tabTarget = item.getAttribute('data-tab');
         
-        // Block unauthorized access for Attendance Admin (Only allowed 'attendance')
-        if (TomaAuth.isAttendanceAdmin() && !['attendance'].includes(tabTarget)) {
+        // Block unauthorized access for Attendance Admin
+        if (TomaAuth.isAttendanceAdmin() && tabTarget !== 'attendance') {
           TomaUtils.showToast('Access restricted to Attendance Admin.', 'warning');
+          return;
+        }
+
+        // Block unauthorized access for T-dash Admin
+        if (TomaAuth.isTDashAdmin() && tabTarget !== 'score') {
+          TomaUtils.showToast('Access restricted to T-dash Admin.', 'warning');
           return;
         }
 

@@ -65,7 +65,7 @@ window.TomaEmailService = {
     `;
 
     return {
-      subject: `🎂 [Toma el Rasol] ${monthName} Monthly Birthday Roster (${birthdayChildren.length} Children)`,
+      subject: `🎂 [Toma_el_rasol] ${monthName} Monthly Birthday Roster (${birthdayChildren.length} Children)`,
       html: htmlBody,
       recipients: emailList
     };
@@ -75,7 +75,7 @@ window.TomaEmailService = {
    * Generates Tomorrow's 1-Day Advance Birthday Reminder HTML Email
    */
   buildTomorrowReminderEmail: function (tomorrowChildren) {
-    const emailList = (window.EMAIL_CONFIG && window.EMAIL_CONFIG.NOTIFICATION_EMAILS) || ['bishoyadel733@gmail.com'];
+    const emailList = (window.EMAIL_CONFIG && window.EMAIL_CONFIG.NOTIFICATION_EMAILS) || ['bishoyadel733@gmail.com', 'Tonyandsandra.26@gmail.com'];
     
     const childrenCards = tomorrowChildren.map(c => `
       <div style="background:#FAF8F5; border:1px solid #FCD34D; padding:16px; border-radius:8px; margin-bottom:12px;">
@@ -92,7 +92,7 @@ window.TomaEmailService = {
           <!-- Header -->
           <div style="background:#0D2040; padding:24px; text-align:center; border-bottom:4px solid #D4AF37;">
             <h1 style="color:#FFFFFF; margin:0; font-size:22px;">⏰ Tomorrow's Birthday Reminder!</h1>
-            <p style="color:#D4AF37; margin:6px 0 0 0; font-size:14px; text-transform:uppercase; letter-spacing:1px;">1-Day Advance Automated Alert</p>
+            <p style="color:#D4AF37; margin:6px 0 0 0; font-size:14px; text-transform:uppercase; letter-spacing:1px;">Toma_el_rasol • 1-Day Advance Alert</p>
           </div>
           
           <!-- Content -->
@@ -101,7 +101,7 @@ window.TomaEmailService = {
               Hello Servant,
             </p>
             <p style="font-size:15px; color:#334155; line-height:1.6;">
-              This is an automated reminder that tomorrow we celebrate the birthday of <strong>${tomorrowChildren.length}</strong> child(ren):
+              This is an automated reminder from <strong>Toma_el_rasol</strong> that tomorrow we celebrate the birthday of <strong>${tomorrowChildren.length}</strong> child(ren):
             </p>
             
             ${childrenCards}
@@ -113,18 +113,64 @@ window.TomaEmailService = {
           
           <!-- Footer -->
           <div style="background:#FAF8F5; padding:16px; text-align:center; border-top:1px solid #E2E8F0; font-size:12px; color:#64748B;">
+            Sender: Toma_el_rasol<br>
             Sent automatically to: ${emailList.join(', ')}<br>
-            © Toma el Rasol Church Class Management
+            © Toma_el_rasol Church Class Management
           </div>
         </div>
       </div>
     `;
 
     return {
-      subject: `⏰ [Tomorrow's Birthday Alert] ${tomorrowChildren.map(c => c.name).join(', ')}`,
+      subject: `⏰ [Toma_el_rasol] Birthday Reminder: ${tomorrowChildren.map(c => c.name).join(', ')}`,
       html: htmlBody,
       recipients: emailList
     };
+  },
+
+  /**
+   * Dispatch Tomorrow's Birthday Reminder Email Instantly
+   */
+  sendTomorrowReminderEmailNow: async function (tomorrowList) {
+    if (!tomorrowList || tomorrowList.length === 0) return;
+    const emailData = this.buildTomorrowReminderEmail(tomorrowList);
+    return await this.dispatchEmail(emailData);
+  },
+
+  /**
+   * Dispatch Monthly Birthday Roster Email Instantly
+   */
+  sendMonthlyRosterEmailNow: async function (monthName, list) {
+    if (!list || list.length === 0) return;
+    const emailData = this.buildMonthlyRosterEmail(monthName, list);
+    return await this.dispatchEmail(emailData);
+  },
+
+  /**
+   * Browser & API Email Dispatcher Engine
+   */
+  dispatchEmail: async function (emailData) {
+    const recipients = emailData.recipients || ['bishoyadel733@gmail.com', 'Tonyandsandra.26@gmail.com'];
+    const recipientsStr = recipients.join(',');
+
+    console.log('📧 Dispatching Birthday Email from Toma_el_rasol:', emailData.subject, 'To:', recipientsStr);
+
+    // Create plain text mailto body
+    const bodyText = `From: Toma_el_rasol\nTo: ${recipientsStr}\nSubject: ${emailData.subject}\n\nThis is an automated birthday notification from Toma_el_rasol.\n\nPlease check your admin dashboard for full details.`;
+
+    // Trigger Mail Client directly
+    const mailtoUrl = `mailto:${encodeURIComponent(recipientsStr)}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(bodyText)}`;
+    
+    try {
+      window.location.href = mailtoUrl;
+    } catch (e) {
+      console.warn('Mailto link error:', e);
+    }
+
+    if (typeof TomaUtils !== 'undefined' && TomaUtils.showToast) {
+      TomaUtils.showToast(`📧 Opening email reminder from Toma_el_rasol for ${recipients.join(', ')}!`, 'success');
+    }
+    return true;
   }
 };
 

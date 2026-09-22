@@ -24,11 +24,11 @@ window.EMAIL_CONFIG = {
 
   // Schedule Rules
   MONTHLY_ROSTER_CRON: '0 0 1 * *', // 1st day of every month at midnight
-  DAILY_REMINDER_CRON: '0 0 * * *',  // Daily at midnight (1 day before birthday reminder)
+  DAILY_REMINDER_CRON: '0 16 * * *', // Daily at 16:00 PM (4:00 PM - 1 day before birthday reminder)
 
   // Default Email Branding
-  SENDER_NAME: 'Toma el Rasol Bot',
-  SENDER_EMAIL: 'notifications@tomaelrasol.org'
+  SENDER_NAME: 'Toma_el_rasol',
+  SENDER_EMAIL: 'Toma_el_rasol@church.org'
 };
 
 if (typeof module !== 'undefined' && module.exports) {

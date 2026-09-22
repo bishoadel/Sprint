@@ -7,8 +7,8 @@
  */
 window.APP_CONFIG = {
   // Live Supabase Credentials
-  SUPABASE_URL: 'https://usmviaczpttzcdddcavf.supabase.co', // e.g. 'https://your-project.supabase.co'
-  SUPABASE_ANON_KEY: 'sb_publishable_K9hbb6npO1zSdyYZjHI1PA_EWNwQMVm', // e.g. 'eyJhbGciOiJIUzI1NiIsInR...'
+  SUPABASE_URL: 'https://cqvvibttccyxfgzqfgsm.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_VEPr53HW6XPyOZLLgsKJhQ_8ewMQu1d',
 
   // App Settings
   APP_NAME: 'Toma el Rasol',

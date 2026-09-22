@@ -7,6 +7,41 @@ window.TomaExcelImporter = {
   excelHeaders: [],
   mappedData: [],
 
+  // Accurate Date Parser without UTC timezone shift
+  parseExcelDate: function (rawDob) {
+    if (!rawDob) return '';
+    const str = String(rawDob).trim();
+
+    // 1. Check DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY (e.g. "14-09-2015" or "14/09/2015")
+    const ddmmyyyyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+    if (ddmmyyyyMatch) {
+      const day = String(ddmmyyyyMatch[1]).padStart(2, '0');
+      const month = String(ddmmyyyyMatch[2]).padStart(2, '0');
+      const year = ddmmyyyyMatch[3];
+      return `${year}-${month}-${day}`;
+    }
+
+    // 2. Check YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD (e.g. "2015-09-14" or "2015/09/14")
+    const yyyymmddMatch = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+    if (yyyymmddMatch) {
+      const year = yyyymmddMatch[1];
+      const month = String(yyyymmddMatch[2]).padStart(2, '0');
+      const day = String(yyyymmddMatch[3]).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // 3. Fallback: Parse using local Date components (getFullYear, getMonth, getDate) WITHOUT toISOString()
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    return '';
+  },
+
   // Process Uploaded File
   handleFileUpload: function (file) {
     if (!file) return;
@@ -87,15 +122,8 @@ window.TomaExcelImporter = {
       const rawName = row[nIdx] ? String(row[nIdx]).trim() : '';
       const rawDob = row[dIdx] ? String(row[dIdx]).trim() : '';
 
-      // Validate Date Format (YYYY-MM-DD)
-      let parsedDate = '';
-      if (rawDob) {
-        const d = new Date(rawDob);
-        if (!isNaN(d.getTime())) {
-          parsedDate = d.toISOString().split('T')[0];
-        }
-      }
-
+      // Parse birthdate accurately without UTC timezone shift (-1 day fix)
+      const parsedDate = this.parseExcelDate(rawDob);
       const isValid = rawName.length > 1 && parsedDate.length === 10;
 
       return {

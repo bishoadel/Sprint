@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,6 +16,7 @@
       justify-content: center;
       padding: 20px;
     }
+
     .gateway-card {
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(212, 175, 55, 0.3);
@@ -24,8 +26,9 @@
       max-width: 520px;
       width: 100%;
       text-align: center;
-      box-shadow: var(--shadow-glow), 0 20px 50px rgba(0,0,0,0.5);
+      box-shadow: var(--shadow-glow), 0 20px 50px rgba(0, 0, 0, 0.5);
     }
+
     .gateway-logo {
       width: 110px;
       height: 110px;
@@ -35,11 +38,13 @@
       box-shadow: 0 0 25px rgba(212, 175, 55, 0.6);
       margin-bottom: 20px;
     }
+
     .gateway-title {
       font-size: 2.2rem;
       color: #FFFFFF;
       margin-bottom: 6px;
     }
+
     .gateway-subtitle {
       color: var(--gold-primary);
       font-weight: 700;
@@ -48,11 +53,13 @@
       font-size: 0.9rem;
       margin-bottom: 30px;
     }
+
     .gateway-actions {
       display: flex;
       flex-direction: column;
       gap: 16px;
     }
+
     .portal-option-btn {
       padding: 16px 24px;
       font-size: 1.05rem;
@@ -64,9 +71,11 @@
       text-decoration: none;
       transition: all var(--transition-normal);
     }
+
     .portal-option-btn:hover {
       transform: translateY(-2px);
     }
+
     .lookup-box {
       margin-top: 24px;
       padding-top: 20px;
@@ -74,6 +83,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <div class="gateway-card fade-in">
@@ -87,7 +97,7 @@
         <span>→</span>
       </a>
       <a href="user/index.html?id=CH-0001" class="portal-option-btn btn-outline-gold">
-        <span>🎮 Demo Child User Portal (Ahmed)</span>
+        <span>🎮 Demo Child User Portal</span>
         <span>→</span>
       </a>
     </div>
@@ -97,7 +107,9 @@
         🔍 Enter 5-Digit Child ID to open User Portal directly:
       </p>
       <form onsubmit="openUserPortal(event)" style="display: flex; gap: 8px;">
-        <input type="text" id="lookup-child-code" class="form-control" placeholder="e.g. 48291" maxlength="5" pattern="[0-9]{5}" style="background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(212,175,55,0.4);" required>
+        <input type="text" id="lookup-child-code" class="form-control" placeholder="e.g. 48291" maxlength="5"
+          pattern="[0-9]{5}" style="background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(212,175,55,0.4);"
+          required>
         <button type="submit" class="btn btn-gold btn-sm">Go</button>
       </form>
     </div>
@@ -113,4 +125,5 @@
     }
   </script>
 </body>
+
 </html>

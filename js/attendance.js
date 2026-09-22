@@ -3,7 +3,8 @@
  */
 
 window.TomaAttendance = {
-  currentCategory: 'sunday_school', // Default tab
+  currentCategory: 'sunday_school', // Default tab for recording
+  historyCategory: 'all', // Default tab for history
 
   init: async function () {
     this.setDefaultDate();
@@ -22,12 +23,23 @@ window.TomaAttendance = {
   switchCategory: function (catCode) {
     this.currentCategory = catCode;
 
-    // Update active UI tabs
+    // Update active UI tabs for recording
     document.querySelectorAll('.att-tab').forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-category') === catCode);
     });
 
     this.renderAttendanceList();
+  },
+
+  switchHistoryCategory: function (catCode) {
+    this.historyCategory = catCode;
+
+    // Update active UI tabs for history
+    document.querySelectorAll('.att-history-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-category') === catCode);
+    });
+
+    this.renderAttendanceHistory();
   },
 
   renderAttendanceList: async function () {
@@ -121,7 +133,7 @@ window.TomaAttendance = {
     }
   },
 
-  // Render Attendance History Grouped by Date & Type
+  // Render Attendance History Audit Log Table (like Score Audit Log in Manual Score tab)
   renderAttendanceHistory: async function () {
     const historyContainer = document.getElementById('attendance-history-container');
     if (!historyContainer) return;
@@ -130,50 +142,130 @@ window.TomaAttendance = {
     const children = await TomaDB.getChildren();
     const types = await TomaDB.getAttendanceTypes();
 
-    const childMap = new Map(children.map(c => [c.id, c.name]));
-    const typeMap = new Map(types.map(t => [t.id, t.name]));
+    const childMap = new Map();
+    children.forEach(c => {
+      if (c.id) childMap.set(String(c.id), c);
+      if (c.child_code) childMap.set(String(c.child_code), c);
+    });
 
-    if (records.length === 0) {
-      historyContainer.innerHTML = `<div style="text-align:center; padding:40px; color:#64748B;">No attendance history recorded yet.</div>`;
+    const typeCodeMap = new Map();
+    const typeNameMap = new Map();
+    types.forEach(t => {
+      if (t.id) {
+        typeCodeMap.set(String(t.id), t.code);
+        typeNameMap.set(String(t.id), t.name);
+      }
+      if (t.code) {
+        typeCodeMap.set(String(t.code), t.code);
+        typeNameMap.set(String(t.code), t.name);
+      }
+    });
+
+    if (!records || records.length === 0) {
+      historyContainer.innerHTML = `
+        <div style="text-align:center; padding:40px; background:white; border-radius:12px; border:1px solid #E2E8F0; color:#64748B;">
+          No attendance records found in database yet.
+        </div>
+      `;
       return;
     }
 
-    // Group records by Date + Attendance Type
-    const groups = {};
-    records.forEach(r => {
-      const key = `${r.attendance_date}___${r.attendance_type_id}`;
-      if (!groups[key]) {
-        groups[key] = {
-          date: r.attendance_date,
-          typeName: typeMap.get(r.attendance_type_id) || 'Attendance',
-          childrenNames: []
-        };
+    const searchQ = (document.getElementById('att-history-search-input')?.value || '').toLowerCase();
+    const dateQ = document.getElementById('att-history-date-filter')?.value || '';
+
+    // Filter records by category, search query, and date
+    const filteredRecords = records.filter(r => {
+      const typeCode = (r.attendance_types && r.attendance_types.code) || typeCodeMap.get(String(r.attendance_type_id)) || String(r.attendance_type_id);
+      
+      // Category filter
+      if (this.historyCategory !== 'all' && typeCode !== this.historyCategory) {
+        return false;
       }
-      const cName = childMap.get(r.child_id);
-      if (cName) groups[key].childrenNames.push(cName);
-    });
 
-    const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
-      return new Date(groups[b].date) - new Date(groups[a].date);
-    });
+      // Date filter
+      if (dateQ && r.attendance_date !== dateQ) {
+        return false;
+      }
 
-    historyContainer.innerHTML = sortedGroupKeys.map(key => {
-      const item = groups[key];
-      return `
-        <div style="background:white; border:1px solid #E2E8F0; border-radius:12px; padding:18px; margin-bottom:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #F1F5F9; padding-bottom:8px;">
-            <h4 style="margin:0; color:#0D2040;">📅 ${TomaUtils.formatDate(item.date)} — ${item.typeName}</h4>
-            <span class="badge badge-gold">${item.childrenNames.length} Present</span>
-          </div>
-          <p style="color:#334155; margin:0; line-height:1.6;">
-            <strong>Present Children:</strong> ${item.childrenNames.join(', ')}
-          </p>
+      // Search query filter
+      const child = (r.children && r.children.name) ? r.children : childMap.get(String(r.child_id));
+      const cName = child ? String(child.name).toLowerCase() : '';
+      const cCode = child ? String(child.child_code).toLowerCase() : '';
+      
+      if (searchQ && !cName.includes(searchQ) && !cCode.includes(searchQ)) {
+        return false;
+      }
+
+      return true;
+    }).sort((a, b) => new Date(b.attendance_date) - new Date(a.attendance_date) || new Date(b.created_at || b.attendance_date) - new Date(a.created_at || a.attendance_date));
+
+    if (filteredRecords.length === 0) {
+      historyContainer.innerHTML = `
+        <div style="text-align:center; padding:40px; background:white; border-radius:12px; border:1px solid #E2E8F0; color:#64748B;">
+          No matching attendance audit logs found for the selected filters.
         </div>
       `;
-    }).join('');
+      return;
+    }
+
+    const getCategoryBadgeClass = (code) => {
+      switch (code) {
+        case 'mass': return 'badge-navy';
+        case 'sunday_school': return 'badge-gold';
+        case 'hymns': return 'badge-success';
+        case 'bible_study': return 'badge-primary';
+        default: return 'badge-navy';
+      }
+    };
+
+    const getCategoryEmoji = (code) => {
+      switch (code) {
+        case 'mass': return '⛪';
+        case 'sunday_school': return '📖';
+        case 'hymns': return '🎵';
+        case 'bible_study': return '💡';
+        default: return '📅';
+      }
+    };
+
+    historyContainer.innerHTML = `
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Attendance Date</th>
+              <th>Category Event</th>
+              <th>Child Name</th>
+              <th>Child Code / ID</th>
+              <th>Recorded By</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredRecords.map(r => {
+              const child = (r.children && r.children.name) ? r.children : childMap.get(String(r.child_id));
+              const typeCode = (r.attendance_types && r.attendance_types.code) || typeCodeMap.get(String(r.attendance_type_id)) || 'attendance';
+              const typeName = (r.attendance_types && r.attendance_types.name) || typeNameMap.get(String(r.attendance_type_id)) || typeCode.replace('_', ' ').toUpperCase();
+              
+              return `
+                <tr>
+                  <td><strong>📅 ${TomaUtils.formatDate(r.attendance_date)}</strong></td>
+                  <td><span class="badge ${getCategoryBadgeClass(typeCode)}">${getCategoryEmoji(typeCode)} ${typeName}</span></td>
+                  <td><strong>${child ? child.name : 'Child Record'}</strong></td>
+                  <td><span class="child-code">${child ? child.child_code : 'N/A'}</span></td>
+                  <td><span class="badge badge-navy">👤 ${r.recorded_by || 'admin'}</span></td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
   },
 
   setupEventListeners: function () {
+    if (this._listenersAttached) return;
+    this._listenersAttached = true;
+
     const searchInput = document.getElementById('att-search-input');
     if (searchInput) {
       searchInput.addEventListener('input', () => this.renderAttendanceList());
@@ -182,6 +274,16 @@ window.TomaAttendance = {
     const saveBtn = document.getElementById('btn-save-attendance');
     if (saveBtn) {
       saveBtn.addEventListener('click', () => this.saveAttendance());
+    }
+
+    const historySearch = document.getElementById('att-history-search-input');
+    if (historySearch) {
+      historySearch.addEventListener('input', () => this.renderAttendanceHistory());
+    }
+
+    const historyDate = document.getElementById('att-history-date-filter');
+    if (historyDate) {
+      historyDate.addEventListener('change', () => this.renderAttendanceHistory());
     }
   }
 };

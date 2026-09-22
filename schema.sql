@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('general_admin', 'attendance_admin')),
+    role VARCHAR(50) NOT NULL CHECK (role IN ('general_admin', 'attendance_admin', 'tdash')),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -76,15 +76,9 @@ CREATE TABLE IF NOT EXISTS public.eftkad_records (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     child_id UUID NOT NULL REFERENCES public.children(id) ON DELETE CASCADE,
     date DATE NOT NULL DEFAULT CURRENT_DATE,
+    servants TEXT[] NOT NULL DEFAULT '{}',
     created_by VARCHAR(100) DEFAULT 'admin',
     created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Eftkad Servants Pairing Table
-CREATE TABLE IF NOT EXISTS public.eftkad_servants (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    eftkad_record_id UUID NOT NULL REFERENCES public.eftkad_records(id) ON DELETE CASCADE,
-    servant_name VARCHAR(150) NOT NULL
 );
 
 -- Store Gifts Catalog Table
@@ -146,25 +140,49 @@ INSERT INTO public.system_settings (key, value) VALUES
 ('store_active', 'true')
 ON CONFLICT (key) DO NOTHING;
 
--- 5. ROW LEVEL SECURITY (RLS) POLICIES
+-- 5. ROW LEVEL SECURITY (RLS) POLICIES (Full Read/Write Access for Web Portals)
 
 ALTER TABLE public.children ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.point_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.point_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.eftkad_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gifts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.purchases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
 
--- Allow Public Read Access for User Portal & QR Page
-CREATE POLICY "Public Read Access Children" ON public.children FOR SELECT USING (true);
-CREATE POLICY "Public Read Access Point Transactions" ON public.point_transactions FOR SELECT USING (true);
-CREATE POLICY "Public Read Access Attendance" ON public.attendance_records FOR SELECT USING (true);
-CREATE POLICY "Public Read Access Gifts" ON public.gifts FOR SELECT USING (true);
-CREATE POLICY "Public Read Access Purchases" ON public.purchases FOR SELECT USING (true);
-CREATE POLICY "Public Insert Purchase" ON public.purchases FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public Read Settings" ON public.system_settings FOR SELECT USING (true);
+-- Allow Public Access (Select, Insert, Update, Delete) - Safe Idempotent Policies
+DROP POLICY IF EXISTS "Public Access Children" ON public.children;
+CREATE POLICY "Public Access Children" ON public.children FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Attendance Records" ON public.attendance_records;
+CREATE POLICY "Public Access Attendance Records" ON public.attendance_records FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Attendance Types" ON public.attendance_types;
+CREATE POLICY "Public Access Attendance Types" ON public.attendance_types FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Point Rules" ON public.point_rules;
+CREATE POLICY "Public Access Point Rules" ON public.point_rules FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Point Transactions" ON public.point_transactions;
+CREATE POLICY "Public Access Point Transactions" ON public.point_transactions FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Eftkad Records" ON public.eftkad_records;
+CREATE POLICY "Public Access Eftkad Records" ON public.eftkad_records FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Gifts" ON public.gifts;
+CREATE POLICY "Public Access Gifts" ON public.gifts FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Purchases" ON public.purchases;
+CREATE POLICY "Public Access Purchases" ON public.purchases FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access System Settings" ON public.system_settings;
+CREATE POLICY "Public Access System Settings" ON public.system_settings FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Access Admins" ON public.admins;
+CREATE POLICY "Public Access Admins" ON public.admins FOR ALL USING (true) WITH CHECK (true);
 
 -- 6. 24/7 AUTOMATED CLOUD BIRTHDAY CRON JOB (STRICTLY 1 DAY BEFORE BIRTHDATE)
 -- Runs 24/7 on Supabase Cloud servers every night at midnight (00:00)
@@ -220,17 +238,35 @@ BEGIN
 END;
 $$;
 
--- Schedule 24/7 Midnight Cron Job for Tomorrow's Birthday Reminder (Every night at 00:00)
-SELECT cron.schedule(
-    'tomorrow-birthday-reminder-job',
-    '0 0 * * *',
-    $$ SELECT public.check_tomorrow_birthdays(); $$
-);
+-- Schedule 24/7 Midnight Cron Jobs Safely (Idempotent Execution)
+DO $do$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+        BEGIN
+            PERFORM cron.unschedule('tomorrow-birthday-reminder-job');
+        EXCEPTION WHEN OTHERS THEN
+            -- Ignore if job did not exist yet
+        END;
 
--- Schedule Beginning of Month Cron Job for Monthly Birthday Roster Email (1st day of month at 00:00)
-SELECT cron.schedule(
-    'monthly-birthday-roster-job',
-    '0 0 1 * *',
-    $$ SELECT public.check_monthly_birthdays(); $$
-);
+        BEGIN
+            PERFORM cron.unschedule('monthly-birthday-roster-job');
+        EXCEPTION WHEN OTHERS THEN
+            -- Ignore if job did not exist yet
+        END;
+        
+        PERFORM cron.schedule(
+            'tomorrow-birthday-reminder-job',
+            '0 16 * * *',
+            'SELECT public.check_tomorrow_birthdays();'
+        );
+
+        PERFORM cron.schedule(
+            'monthly-birthday-roster-job',
+            '0 0 1 * *',
+            'SELECT public.check_monthly_birthdays();'
+        );
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'pg_cron scheduling skipped: %', SQLERRM;
+END $do$;
 

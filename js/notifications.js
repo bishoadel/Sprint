@@ -137,9 +137,14 @@ window.TomaNotifications = {
                   Turns <strong>${TomaUtils.getAge(c.birth_date) + 1}</strong> years old tomorrow!
                 </div>
               </div>
-              <button class="btn btn-gold btn-sm" onclick="TomaNotifications.triggerSystemPopup('🎂 Tomorrow Birthday Alert!', 'Tomorrow is ${c.name}\\'s birthday! Turning ${TomaUtils.getAge(c.birth_date) + 1} years old.')">
-                🔔 Send Phone Popup
-              </button>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-gold btn-sm" onclick="TomaNotifications.triggerSystemPopup('🎂 Tomorrow Birthday Alert!', 'Tomorrow is ${c.name}\\'s birthday! Turning ${TomaUtils.getAge(c.birth_date) + 1} years old.')">
+                  🔔 Send Phone Popup
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="TomaEmailService.sendTomorrowReminderEmailNow([${JSON.stringify(c).replace(/"/g, '&quot;')}])">
+                  📧 Send Email Reminder Now
+                </button>
+              </div>
             </div>
           `).join('')}
         </div>
@@ -199,6 +204,22 @@ window.TomaNotifications = {
     `;
   },
 
+  triggerManualEmailCheck: async function () {
+    const tomorrowList = await this.getTomorrowBirthdays();
+    const monthlyList = await this.getMonthlyBirthdays();
+    const monthName = TomaBirthdays ? TomaBirthdays.MONTH_NAMES[new Date().getMonth()] : 'Current Month';
+
+    if (tomorrowList.length > 0 && window.TomaEmailService) {
+      await window.TomaEmailService.sendTomorrowReminderEmailNow(tomorrowList);
+    } else if (monthlyList.length > 0 && window.TomaEmailService) {
+      await window.TomaEmailService.sendMonthlyRosterEmailNow(monthName, monthlyList);
+    } else {
+      if (typeof TomaUtils !== 'undefined' && TomaUtils.showToast) {
+        TomaUtils.showToast('No birthdays scheduled for tomorrow or this month to dispatch.', 'warning');
+      }
+    }
+  },
+
   // 4. AUTOMATED PHONE & BROWSER POPUP TRIGGER (STRICTLY 1 DAY BEFORE BIRTHDATE)
   checkAndTriggerAutomatedPopups: async function () {
     if (!("Notification" in window) || Notification.permission !== "granted") {
@@ -222,6 +243,9 @@ window.TomaNotifications = {
           `Tomorrow is ${c.name}'s birthday (${c.child_code}). They will turn ${TomaUtils.getAge(c.birth_date) + 1} years old tomorrow!`
         );
       });
+      if (window.TomaEmailService) {
+        window.TomaEmailService.sendTomorrowReminderEmailNow(tomorrowList);
+      }
     }
 
     localStorage.setItem('toma_last_popup_check', todayStr);

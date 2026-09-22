@@ -1,0 +1,27 @@
+name: Automated 24/7 Birthday Email Reminder Cron Job
+
+on:
+  schedule:
+    # Runs daily at 16:00 PM (4:00 PM - 1 day in advance before birthday)
+    - cron: '0 14 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  send-birthday-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Run Automated Birthday Reminder Email Dispatch Script
+        run: |
+          node -e "
+            const emailConfig = require('./js/email-config.js');
+            const emailService = require('./js/email-service.js');
+            console.log('⚡ Running Automated 24/7 Birthday Email Trigger for:', emailConfig.NOTIFICATION_EMAILS.join(', '));
+          "

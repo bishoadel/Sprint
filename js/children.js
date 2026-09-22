@@ -159,6 +159,9 @@ window.TomaChildren = {
   },
 
   setupEventListeners: function () {
+    if (this._listenersAttached) return;
+    this._listenersAttached = true;
+
     const searchInput = document.getElementById('kashf-search-input');
     if (searchInput) {
       searchInput.addEventListener('input', (e) => this.filterChildren(e.target.value));

@@ -3,7 +3,7 @@
  */
 
 window.TomaEftkad = {
-  servantsList: ['Bishoy', 'Mina', 'Joseph', 'George', 'Mark', 'Kirolos', 'Sameh'],
+  servantsList: ['Tony', 'Beshoy', 'Morcos', 'Dawood', 'John Hani', 'John Rafik'],
 
   init: async function () {
     this.populateChildSelect();
@@ -82,15 +82,43 @@ window.TomaEftkad = {
 
     const records = await TomaDB.getEftkadRecords();
     const children = await TomaDB.getChildren();
-    const childMap = new Map(children.map(c => [c.id, c]));
+
+    const childMap = new Map();
+    children.forEach(c => {
+      if (c.id) childMap.set(String(c.id), c);
+      if (c.child_code) childMap.set(String(c.child_code), c);
+    });
 
     const searchQ = (document.getElementById('eftkad-search-input')?.value || '').toLowerCase();
 
-    const filtered = records.filter(r => {
-      const child = childMap.get(r.child_id);
-      const childName = child ? child.name.toLowerCase() : '';
+    // Deduplicate and group records by Child ID + Date
+    const groupedMap = new Map();
+    records.forEach(r => {
+      const childObj = (r.children && r.children.name) ? r.children : childMap.get(String(r.child_id));
+      const childKey = childObj ? String(childObj.id) : String(r.child_id);
+      const key = `${childKey}___${r.date}`;
+
+      const servantsArr = Array.isArray(r.servants)
+        ? r.servants
+        : (typeof r.servants === 'string' ? r.servants.replace(/[{}]/g, '').split(',').map(s => s.trim()).filter(Boolean) : []);
+
+      if (!groupedMap.has(key)) {
+        groupedMap.set(key, { ...r, children: childObj, servants: Array.from(new Set(servantsArr)) });
+      } else {
+        const existing = groupedMap.get(key);
+        const existingServants = Array.isArray(existing.servants) ? existing.servants : [];
+        const combinedServants = Array.from(new Set([...existingServants, ...servantsArr]));
+        groupedMap.set(key, { ...existing, servants: combinedServants });
+      }
+    });
+
+    const uniqueRecords = Array.from(groupedMap.values());
+
+    const filtered = uniqueRecords.filter(r => {
+      const child = r.children || childMap.get(String(r.child_id));
+      const childName = child ? String(child.name).toLowerCase() : '';
       const servantNames = (r.servants || []).join(' ').toLowerCase();
-      return childName.includes(searchQ) || servantNames.includes(searchQ) || r.date.includes(searchQ);
+      return childName.includes(searchQ) || servantNames.includes(searchQ) || (r.date && r.date.includes(searchQ));
     }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
     if (filtered.length === 0) {
@@ -111,16 +139,17 @@ window.TomaEftkad = {
           </thead>
           <tbody>
             ${filtered.map(r => {
-              const child = childMap.get(r.child_id);
-              return `
+      const child = (r.children && r.children.name) ? r.children : childMap.get(String(r.child_id));
+      const servantsArr = Array.isArray(r.servants) ? r.servants : (typeof r.servants === 'string' ? r.servants.replace(/[{}]/g, '').split(',') : []);
+      return `
                 <tr>
                   <td><strong>${TomaUtils.formatDate(r.date)}</strong></td>
-                  <td>${child ? child.name : 'Unknown'}</td>
+                  <td>${child ? child.name : 'Child Record'}</td>
                   <td><span class="child-code">${child ? child.child_code : 'N/A'}</span></td>
-                  <td>${(r.servants || []).map(s => `<span class="badge badge-gold" style="margin-right:4px;">👤 ${s}</span>`).join('')}</td>
+                  <td>${servantsArr.map(s => `<span class="badge badge-gold" style="margin-right:4px;">👤 ${String(s).trim()}</span>`).join('')}</td>
                 </tr>
               `;
-            }).join('')}
+    }).join('')}
           </tbody>
         </table>
       </div>
@@ -128,6 +157,9 @@ window.TomaEftkad = {
   },
 
   setupEventListeners: function () {
+    if (this._listenersAttached) return;
+    this._listenersAttached = true;
+
     const form = document.getElementById('form-eftkad-entry');
     if (form) {
       form.addEventListener('submit', (e) => this.saveEftkad(e));

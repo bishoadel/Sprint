@@ -1,16 +1,17 @@
 /**
- * Toma el Rasol - Data Access Layer (Supabase + Offline Mock Fallback)
+ * Toma el Rasol - Data Access Layer (Live Supabase Backend + Offline LocalStorage Fallback)
  */
 
 (function () {
   const STORAGE_KEY = 'toma_el_rasol_db_v3';
 
-  // Initial Database Schema with Pre-loaded Gifts Catalog
+  // Initial Seed Schema for LocalStorage Fallback
   const INITIAL_SEED = {
     children: [],
     admins: [
       { id: 'a1', username: 'admin', password: '123', role: 'general_admin' },
-      { id: 'a2', username: 'attendance', password: '123', role: 'attendance_admin' }
+      { id: 'a2', username: 'attendance', password: '123', role: 'attendance_admin' },
+      { id: 'a3', username: 'T-dash', password: '123', role: 'tdash' }
     ],
     attendance_types: [
       { id: 'att_1', code: 'mass', name: 'Mass Attendance' },
@@ -35,26 +36,14 @@
       { id: 'g_3', name: 'Notebook Set', description: 'Hardcover spiral notebook with grid lines', points_price: 100, active: true, image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400' },
       { id: 'g_4', name: 'Pen Set', description: '12-pack multicolor gel pen set', points_price: 120, active: true, image_url: 'https://images.unsplash.com/photo-1585336261026-875a60a1c96b?w=400' },
       { id: 'g_5', name: 'Water Bottle', description: 'Insulated stainless steel water bottle', points_price: 300, active: true, image_url: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400' },
-      { id: 'g_6', name: 'Sports Cap', description: 'Adjustable athletic cotton cap', points_price: 250, active: true, image_url: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400' },
-      { id: 'g_7', name: 'Metal Keychain', description: 'St. Thomas cross metal keychain', points_price: 80, active: true, image_url: 'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=400' },
-      { id: 'g_8', name: 'Puzzle Game', description: '500-piece biblical stories puzzle', points_price: 200, active: true, image_url: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=400' },
-      { id: 'g_9', name: 'Coloring Set', description: '50-piece art coloring marker set', points_price: 180, active: true, image_url: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400' },
-      { id: 'g_10', name: 'Ceramic Mug', description: 'Inspiring St. Thomas quote ceramic mug', points_price: 220, active: true, image_url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400' },
-      { id: 'g_11', name: 'Leather Bracelet', description: 'Handcrafted leather cross bracelet', points_price: 150, active: true, image_url: 'https://images.unsplash.com/photo-1611591475878-0118bc5e4c02?w=400' },
-      { id: 'g_12', name: 'Bible Bookmark', description: 'Gold plated metallic Bible bookmark', points_price: 70, active: true, image_url: 'https://images.unsplash.com/photo-1544716278-e513176f20b5?w=400' },
-      { id: 'g_13', name: 'Board Game', description: 'Family Bible Trivia board game', points_price: 500, active: true, image_url: 'https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?w=400' },
-      { id: 'g_14', name: 'Pencil Case', description: 'Double zippered canvas pencil case', points_price: 180, active: true, image_url: 'https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?w=400' },
-      { id: 'g_15', name: 'Bluetooth Speaker', description: 'Portable mini wireless speaker', points_price: 450, active: true, image_url: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400' },
-      { id: 'g_16', name: 'Sports Bottle', description: 'Squeeze sports gym water bottle', points_price: 350, active: true, image_url: 'https://images.unsplash.com/photo-1523362628745-0c100150b504?w=400' },
-      { id: 'g_17', name: 'Gift Box Surprise', description: 'Mystery Christian youth surprise box', points_price: 300, active: true, image_url: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400' }
+      { id: 'g_6', name: 'Sports Cap', description: 'Adjustable athletic cotton cap', points_price: 250, active: true, image_url: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400' }
     ],
     purchases: [],
     system_settings: {
-      store_active: 'true' // Default ON with full gift catalog
+      store_active: 'true'
     }
   };
 
-  // Helper to load or initialize LocalStorage
   function getDB() {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
@@ -77,39 +66,69 @@
     }
   }
 
+  // Supabase Client Singleton
+  let _supabaseClient = null;
+
+  function getSupabaseClient() {
+    if (_supabaseClient) return _supabaseClient;
+
+    const config = window.APP_CONFIG;
+    if (
+      typeof supabase !== 'undefined' &&
+      config &&
+      config.SUPABASE_URL &&
+      config.SUPABASE_URL.startsWith('https://') &&
+      config.SUPABASE_ANON_KEY &&
+      config.SUPABASE_ANON_KEY.length > 10
+    ) {
+      try {
+        _supabaseClient = supabase.createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+        console.log('⚡ Connected to Live Supabase Backend:', config.SUPABASE_URL);
+        return _supabaseClient;
+      } catch (err) {
+        console.warn('Supabase initialization failed:', err);
+        return null;
+      }
+    }
+    return null;
+  }
+
   // Unified Data Access API
   window.TomaDB = {
-    // Check if live Supabase client exists
     isLiveSupabase: function () {
-      return (
-        typeof supabase !== 'undefined' &&
-        window.APP_CONFIG &&
-        window.APP_CONFIG.SUPABASE_URL &&
-        window.APP_CONFIG.SUPABASE_URL.startsWith('https://') &&
-        window.APP_CONFIG.SUPABASE_ANON_KEY &&
-        window.APP_CONFIG.SUPABASE_ANON_KEY.length > 20
-      );
+      return getSupabaseClient() !== null;
     },
 
     // --- CHILDREN ---
     getChildren: async function () {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client.from('children').select('*').order('created_at', { ascending: false });
+          if (!error && data) return data;
+          console.warn('Supabase getChildren query error:', error);
+        } catch (e) {
+          console.warn('Supabase getChildren exception:', e);
+        }
+      }
       const db = getDB();
       return db.children || [];
     },
 
     getChildByCode: async function (code) {
       const children = await this.getChildren();
-      return children.find(c => c.child_code.toLowerCase() === code.toLowerCase()) || null;
+      return children.find(c => String(c.child_code).toLowerCase() === String(code).toLowerCase()) || null;
     },
 
     getChildById: async function (id) {
       const children = await this.getChildren();
-      return children.find(c => c.id === id) || null;
+      return children.find(c => String(c.id) === String(id)) || null;
     },
 
     createChild: async function (childData) {
-      const db = getDB();
-      
+      const client = getSupabaseClient();
+      const existing = await this.getChildren();
+
       // Generate Unique 5-Digit Random Child Code (10000 - 99999)
       let childCode = '';
       let isUnique = false;
@@ -117,30 +136,64 @@
 
       while (!isUnique && attempts < 1000) {
         attempts++;
-        const randNum = Math.floor(10000 + Math.random() * 90000); // 5 digits
+        const randNum = Math.floor(10000 + Math.random() * 90000);
         childCode = String(randNum);
 
-        // Verify no duplicate child_code exists
-        const exists = db.children.some(c => c.child_code === childCode);
+        const exists = existing.some(c => String(c.child_code) === childCode);
         if (!exists) {
           isUnique = true;
         }
       }
 
-      const newChild = {
-        id: 'child_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      const payload = {
         child_code: childCode,
         name: childData.name.trim(),
-        birth_date: childData.birth_date,
-        created_at: new Date().toISOString()
+        birth_date: childData.birth_date
       };
 
+      if (client) {
+        try {
+          const { data, error } = await client.from('children').insert([payload]).select();
+          if (!error && data && data.length > 0) {
+            console.log('✅ Child record saved directly to Supabase cloud table:', data[0]);
+            const db = getDB();
+            db.children.push(data[0]);
+            saveDB(db);
+            return data[0];
+          }
+          console.error('Supabase createChild error:', error);
+        } catch (e) {
+          console.error('Supabase createChild exception:', e);
+        }
+      }
+
+      // Offline / Fallback
+      const db = getDB();
+      const newChild = {
+        id: 'child_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        ...payload,
+        created_at: new Date().toISOString()
+      };
       db.children.push(newChild);
       saveDB(db);
       return newChild;
     },
 
     updateChild: async function (id, updatedData) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client.from('children').update(updatedData).eq('id', id).select();
+          if (!error && data && data.length > 0) {
+            const db = getDB();
+            const idx = db.children.findIndex(c => c.id === id);
+            if (idx !== -1) db.children[idx] = { ...db.children[idx], ...data[0] };
+            saveDB(db);
+            return data[0];
+          }
+        } catch (e) {}
+      }
+
       const db = getDB();
       const idx = db.children.findIndex(c => c.id === id);
       if (idx !== -1) {
@@ -152,9 +205,15 @@
     },
 
     deleteChild: async function (id) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          await client.from('children').delete().eq('id', id);
+        } catch (e) {}
+      }
+
       const db = getDB();
       db.children = db.children.filter(c => c.id !== id);
-      // Remove child transactions, attendance & purchases
       db.attendance_records = db.attendance_records.filter(a => a.child_id !== id);
       db.point_transactions = db.point_transactions.filter(p => p.child_id !== id);
       db.purchases = db.purchases.filter(pr => pr.child_id !== id);
@@ -164,6 +223,13 @@
 
     // --- POINTS & TRANSACTIONS ---
     getPointTransactions: async function () {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client.from('point_transactions').select('*').order('created_at', { ascending: false });
+          if (!error && data) return data;
+        } catch (e) {}
+      }
       const db = getDB();
       return db.point_transactions || [];
     },
@@ -171,7 +237,7 @@
     getChildPoints: async function (childId) {
       const txs = await this.getPointTransactions();
       return txs
-        .filter(t => t.child_id === childId)
+        .filter(t => String(t.child_id) === String(childId))
         .reduce((sum, t) => sum + (Number(t.points) || 0), 0);
     },
 
@@ -181,22 +247,39 @@
       
       return children.map(child => {
         const totalPoints = txs
-          .filter(t => t.child_id === child.id)
+          .filter(t => String(t.child_id) === String(child.id))
           .reduce((sum, t) => sum + (Number(t.points) || 0), 0);
         return { ...child, total_points: totalPoints };
       }).sort((a, b) => b.total_points - a.total_points);
     },
 
     addPointTransaction: async function (txData) {
-      const db = getDB();
-      const newTx = {
-        id: 'pt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      const client = getSupabaseClient();
+      const payload = {
         child_id: txData.child_id,
         points: Number(txData.points),
         source_type: txData.source_type || 'manual',
         source_id: txData.source_id || null,
         description: txData.description || 'Point adjustment',
-        created_by: txData.created_by || 'admin',
+        created_by: txData.created_by || 'admin'
+      };
+
+      if (client) {
+        try {
+          const { data, error } = await client.from('point_transactions').insert([payload]).select();
+          if (!error && data && data.length > 0) {
+            const db = getDB();
+            db.point_transactions.push(data[0]);
+            saveDB(db);
+            return data[0];
+          }
+        } catch (e) {}
+      }
+
+      const db = getDB();
+      const newTx = {
+        id: 'pt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        ...payload,
         created_at: new Date().toISOString()
       };
       db.point_transactions.push(newTx);
@@ -206,24 +289,46 @@
 
     // --- POINT RULES ---
     getPointRules: async function () {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client.from('point_rules').select('*');
+          if (!error && data && data.length > 0) return data;
+        } catch (e) {}
+      }
       const db = getDB();
       return db.point_rules || [];
     },
 
     savePointRule: async function (ruleData) {
+      const client = getSupabaseClient();
+      const payload = {
+        event_name: ruleData.event_name,
+        event_type: ruleData.event_type || 'custom',
+        points: Number(ruleData.points),
+        active: true
+      };
+
+      if (client) {
+        try {
+          if (ruleData.id) {
+            await client.from('point_rules').update(payload).eq('id', ruleData.id);
+          } else {
+            await client.from('point_rules').insert([payload]);
+          }
+        } catch (e) {}
+      }
+
       const db = getDB();
       if (ruleData.id) {
         const idx = db.point_rules.findIndex(r => r.id === ruleData.id);
         if (idx !== -1) {
-          db.point_rules[idx] = { ...db.point_rules[idx], ...ruleData };
+          db.point_rules[idx] = { ...db.point_rules[idx], ...payload };
         }
       } else {
         const newRule = {
           id: 'pr_' + Date.now(),
-          event_name: ruleData.event_name,
-          event_type: ruleData.event_type || 'custom',
-          points: Number(ruleData.points),
-          active: true,
+          ...payload,
           created_at: new Date().toISOString()
         };
         db.point_rules.push(newRule);
@@ -233,6 +338,13 @@
     },
 
     deletePointRule: async function (ruleId) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          await client.from('point_rules').delete().eq('id', ruleId);
+        } catch (e) {}
+      }
+
       const db = getDB();
       db.point_rules = db.point_rules.filter(r => r.id !== ruleId);
       saveDB(db);
@@ -241,17 +353,40 @@
 
     // --- ATTENDANCE ---
     getAttendanceTypes: async function () {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client.from('attendance_types').select('*');
+          if (!error && data && data.length > 0) return data;
+        } catch (e) {}
+      }
       const db = getDB();
       return db.attendance_types || [];
     },
 
     getAttendanceRecords: async function () {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client.from('attendance_records').select('*, children(id, name, child_code), attendance_types(id, code, name)').order('created_at', { ascending: false });
+          if (!error && data) {
+            const db = getDB();
+            const localRecs = db.attendance_records || [];
+            const mergedMap = new Map();
+            data.forEach(r => mergedMap.set(String(r.id), r));
+            localRecs.forEach(r => {
+              if (r.id && !mergedMap.has(String(r.id))) mergedMap.set(String(r.id), r);
+            });
+            return Array.from(mergedMap.values());
+          }
+        } catch (e) {}
+      }
       const db = getDB();
       return db.attendance_records || [];
     },
 
     recordBulkAttendance: async function (childIds, attendanceTypeCode, dateStr, adminUser) {
-      const db = getDB();
+      const client = getSupabaseClient();
       const attTypes = await this.getAttendanceTypes();
       const attType = attTypes.find(t => t.code === attendanceTypeCode);
       if (!attType) throw new Error('Invalid attendance type');
@@ -261,25 +396,50 @@
       const pointsToAdd = matchingRule ? Number(matchingRule.points) : 0;
 
       let addedCount = 0;
+      const existing = await this.getAttendanceRecords();
 
       for (const childId of childIds) {
-        // Prevent duplicate attendance for same child, date, and type
-        const exists = db.attendance_records.some(
-          a => a.child_id === childId && a.attendance_type_id === attType.id && a.attendance_date === dateStr
+        const exists = existing.some(
+          a => String(a.child_id) === String(childId) && String(a.attendance_type_id) === String(attType.id) && a.attendance_date === dateStr
         );
 
         if (!exists) {
-          const recId = 'ar_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-          db.attendance_records.push({
-            id: recId,
+          const payload = {
             child_id: childId,
             attendance_type_id: attType.id,
             attendance_date: dateStr,
-            recorded_by: adminUser || 'admin',
+            recorded_by: adminUser || 'admin'
+          };
+
+          if (client) {
+            try {
+              const { data, error } = await client.from('attendance_records').insert([payload]).select();
+              if (!error && data && data.length > 0) {
+                const rec = data[0];
+                if (pointsToAdd > 0) {
+                  await this.addPointTransaction({
+                    child_id: childId,
+                    points: pointsToAdd,
+                    source_type: 'attendance',
+                    source_id: rec.id,
+                    description: `${attType.name} (${dateStr})`,
+                    created_by: adminUser || 'admin'
+                  });
+                }
+                addedCount++;
+                continue;
+              }
+            } catch (e) {}
+          }
+
+          const db = getDB();
+          const recId = 'ar_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+          db.attendance_records.push({
+            id: recId,
+            ...payload,
             created_at: new Date().toISOString()
           });
 
-          // Trigger Automatic Points Transaction
           if (pointsToAdd > 0) {
             db.point_transactions.push({
               id: 'pt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
@@ -292,28 +452,97 @@
               created_at: new Date().toISOString()
             });
           }
+          saveDB(db);
           addedCount++;
         }
       }
 
-      saveDB(db);
       return { addedCount, pointsPerChild: pointsToAdd };
     },
 
     // --- EFTKAD ---
     getEftkadRecords: async function () {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client.from('eftkad_records').select('*, children(id, name, child_code)').order('created_at', { ascending: false });
+          if (!error && data) return data;
+        } catch (e) {}
+      }
       const db = getDB();
       return db.eftkad_records || [];
     },
 
     addEftkadRecord: async function (childId, servantsArray, dateStr, adminUser) {
+      const client = getSupabaseClient();
       const db = getDB();
-      const newRecord = {
-        id: 'e_' + Date.now(),
+
+      if (client) {
+        try {
+          // Check if record already exists for this child and date
+          const { data: existing, error: findErr } = await client
+            .from('eftkad_records')
+            .select('*')
+            .eq('child_id', childId)
+            .eq('date', dateStr);
+
+          if (!findErr && existing && existing.length > 0) {
+            const currentRec = existing[0];
+            const oldServants = Array.isArray(currentRec.servants) ? currentRec.servants : [];
+            const mergedServants = Array.from(new Set([...oldServants, ...servantsArray]));
+
+            const { data: updated, error: updateErr } = await client
+              .from('eftkad_records')
+              .update({ servants: mergedServants })
+              .eq('id', currentRec.id)
+              .select();
+
+            if (!updateErr && updated && updated.length > 0) {
+              const idx = (db.eftkad_records || []).findIndex(r => r.id === currentRec.id);
+              if (idx !== -1) db.eftkad_records[idx] = updated[0];
+              else db.eftkad_records.push(updated[0]);
+              saveDB(db);
+              return updated[0];
+            }
+          } else {
+            const payload = {
+              child_id: childId,
+              date: dateStr,
+              servants: servantsArray,
+              created_by: adminUser || 'admin'
+            };
+
+            const { data, error } = await client.from('eftkad_records').insert([payload]).select();
+            if (!error && data && data.length > 0) {
+              db.eftkad_records.push(data[0]);
+              saveDB(db);
+              return data[0];
+            }
+          }
+        } catch (e) {
+          console.warn('Supabase addEftkadRecord error:', e);
+        }
+      }
+
+      // Offline / LocalStorage Fallback
+      const payload = {
         child_id: childId,
         date: dateStr,
         servants: servantsArray,
-        created_by: adminUser || 'admin',
+        created_by: adminUser || 'admin'
+      };
+
+      const existingIdx = (db.eftkad_records || []).findIndex(r => String(r.child_id) === String(childId) && r.date === dateStr);
+      if (existingIdx !== -1) {
+        const oldServants = Array.isArray(db.eftkad_records[existingIdx].servants) ? db.eftkad_records[existingIdx].servants : [];
+        db.eftkad_records[existingIdx].servants = Array.from(new Set([...oldServants, ...servantsArray]));
+        saveDB(db);
+        return db.eftkad_records[existingIdx];
+      }
+
+      const newRecord = {
+        id: 'e_' + Date.now(),
+        ...payload,
         created_at: new Date().toISOString()
       };
       db.eftkad_records.push(newRecord);
@@ -323,25 +552,47 @@
 
     // --- STORE & PURCHASES ---
     getGifts: async function () {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client.from('gifts').select('*').order('created_at', { ascending: false });
+          if (!error && data && data.length > 0) return data;
+        } catch (e) {}
+      }
       const db = getDB();
       return db.gifts || [];
     },
 
     saveGift: async function (giftData) {
+      const client = getSupabaseClient();
+      const payload = {
+        name: giftData.name,
+        description: giftData.description || '',
+        points_price: Number(giftData.points_price),
+        image_url: giftData.image_url || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400',
+        active: true
+      };
+
+      if (client) {
+        try {
+          if (giftData.id) {
+            await client.from('gifts').update(payload).eq('id', giftData.id);
+          } else {
+            await client.from('gifts').insert([payload]);
+          }
+        } catch (e) {}
+      }
+
       const db = getDB();
       if (giftData.id) {
         const idx = db.gifts.findIndex(g => g.id === giftData.id);
         if (idx !== -1) {
-          db.gifts[idx] = { ...db.gifts[idx], ...giftData };
+          db.gifts[idx] = { ...db.gifts[idx], ...payload };
         }
       } else {
         const newGift = {
           id: 'g_' + Date.now(),
-          name: giftData.name,
-          description: giftData.description || '',
-          points_price: Number(giftData.points_price),
-          image_url: giftData.image_url || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400',
-          active: true,
+          ...payload,
           created_at: new Date().toISOString()
         };
         db.gifts.push(newGift);
@@ -351,6 +602,13 @@
     },
 
     deleteGift: async function (giftId) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          await client.from('gifts').delete().eq('id', giftId);
+        } catch (e) {}
+      }
+
       const db = getDB();
       db.gifts = db.gifts.filter(g => g.id !== giftId);
       saveDB(db);
@@ -358,50 +616,75 @@
     },
 
     getPurchases: async function () {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client.from('purchases').select('*');
+          if (!error && data) return data;
+        } catch (e) {}
+      }
       const db = getDB();
       return db.purchases || [];
     },
 
     purchaseGift: async function (childId, giftId) {
-      const db = getDB();
-
-      // Check Store Status
-      const isStoreActive = db.system_settings.store_active === 'true';
+      const isStoreActive = await this.getStoreStatus();
       if (!isStoreActive) {
         throw new Error('Store is currently turned OFF by General Admin.');
       }
 
-      // Check if child already purchased a gift
-      const existingPurchase = db.purchases.find(p => p.child_id === childId);
+      const purchases = await this.getPurchases();
+      const existingPurchase = purchases.find(p => String(p.child_id) === String(childId));
       if (existingPurchase) {
         throw new Error('You have already purchased a gift during this session.');
       }
 
-      // Check gift availability & price
-      const gift = db.gifts.find(g => g.id === giftId && g.active);
+      const gifts = await this.getGifts();
+      const gift = gifts.find(g => String(g.id) === String(giftId) && g.active);
       if (!gift) {
         throw new Error('Gift is not available.');
       }
 
-      // Check child points
       const currentPoints = await this.getChildPoints(childId);
       if (currentPoints < gift.points_price) {
         throw new Error(`Insufficient points. You need ${gift.points_price} points, but have ${currentPoints}.`);
       }
 
-      // Create Purchase Record
-      const purchaseId = 'pur_' + Date.now();
-      const newPurchase = {
-        id: purchaseId,
+      const client = getSupabaseClient();
+      const payload = {
         child_id: childId,
         gift_id: giftId,
         points_price: gift.points_price,
-        status: 'purchased',
+        status: 'purchased'
+      };
+
+      if (client) {
+        try {
+          const { data, error } = await client.from('purchases').insert([payload]).select();
+          if (!error && data && data.length > 0) {
+            const pur = data[0];
+            await this.addPointTransaction({
+              child_id: childId,
+              points: -gift.points_price,
+              source_type: 'purchase',
+              source_id: pur.id,
+              description: `Purchased: ${gift.name}`,
+              created_by: 'user'
+            });
+            return pur;
+          }
+        } catch (e) {}
+      }
+
+      const db = getDB();
+      const purchaseId = 'pur_' + Date.now();
+      const newPurchase = {
+        id: purchaseId,
+        ...payload,
         purchased_at: new Date().toISOString()
       };
       db.purchases.push(newPurchase);
 
-      // Deduct Points via negative Point Transaction
       db.point_transactions.push({
         id: 'pt_' + Date.now(),
         child_id: childId,
@@ -419,13 +702,28 @@
 
     // --- SYSTEM SETTINGS ---
     getStoreStatus: async function () {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          const { data, error } = await client.from('system_settings').select('value').eq('key', 'store_active').single();
+          if (!error && data) return data.value === 'true';
+        } catch (e) {}
+      }
       const db = getDB();
       return db.system_settings.store_active === 'true';
     },
 
     setStoreStatus: async function (activeBool) {
+      const valStr = activeBool ? 'true' : 'false';
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          await client.from('system_settings').upsert({ key: 'store_active', value: valStr });
+        } catch (e) {}
+      }
+
       const db = getDB();
-      db.system_settings.store_active = activeBool ? 'true' : 'false';
+      db.system_settings.store_active = valStr;
       saveDB(db);
       return activeBool;
     },
