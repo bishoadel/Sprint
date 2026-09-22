@@ -474,10 +474,58 @@ input:checked + .toggle-slider:before {
   transform: translateX(28px);
 }
 
+/* Sidebar Close Button for Mobile */
+.sidebar-close-btn {
+  display: none;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  font-size: 1.2rem;
+  cursor: pointer;
+  margin-left: auto;
+  padding: 4px 10px;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.sidebar-close-btn:hover {
+  background: rgba(239, 68, 68, 0.8);
+  border-color: #EF4444;
+}
+
+/* Sidebar Dark Overlay Backdrop */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(13, 32, 64, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+  display: block;
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 900px) {
+  .sidebar-close-btn {
+    display: block;
+  }
+
   .admin-sidebar {
     transform: translateX(-100%);
+    z-index: 1000;
   }
 
   .admin-sidebar.open {

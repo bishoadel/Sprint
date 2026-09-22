@@ -20,6 +20,9 @@
 <body>
 
   <div class="admin-layout">
+    <!-- Dark Backdrop Overlay for Mobile Sidebar -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="TomaAdminApp.closeMobileSidebar()"></div>
+
     <!-- Sidebar Navigation -->
     <aside class="admin-sidebar" id="admin-sidebar">
       <div class="sidebar-header">
@@ -28,6 +31,7 @@
           <h2>Toma el Rasol</h2>
           <span>Admin Dashboard</span>
         </div>
+        <button class="sidebar-close-btn" onclick="TomaAdminApp.closeMobileSidebar()" title="Close Sidebar">✕</button>
       </div>
 
       <nav class="sidebar-nav">
@@ -83,7 +87,7 @@
     <!-- Main Content -->
     <main class="admin-main">
       <header class="admin-header">
-        <button class="mobile-menu-btn" onclick="document.getElementById('admin-sidebar').classList.toggle('open')">☰</button>
+        <button class="mobile-menu-btn" onclick="TomaAdminApp.toggleMobileSidebar()">☰</button>
         <div class="page-title">
           <h1 id="active-tab-title">Kashf — Child Management</h1>
         </div>

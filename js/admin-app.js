@@ -48,6 +48,20 @@ window.TomaAdminApp = {
     this.switchTab(defaultTab);
   },
 
+  toggleMobileSidebar: function () {
+    const sidebar = document.getElementById('admin-sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) sidebar.classList.toggle('open');
+    if (overlay) overlay.classList.toggle('active');
+  },
+
+  closeMobileSidebar: function () {
+    const sidebar = document.getElementById('admin-sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('active');
+  },
+
   setupTabNavigation: function () {
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
@@ -55,6 +69,9 @@ window.TomaAdminApp = {
         e.preventDefault();
         const tabTarget = item.getAttribute('data-tab');
         
+        // Auto-close sidebar on mobile when a tab is clicked
+        this.closeMobileSidebar();
+
         // Block unauthorized access for Attendance Admin
         if (TomaAuth.isAttendanceAdmin() && tabTarget !== 'attendance') {
           TomaUtils.showToast('Access restricted to Attendance Admin.', 'warning');
@@ -73,6 +90,9 @@ window.TomaAdminApp = {
   },
 
   switchTab: async function (tabId) {
+    // Auto-close mobile sidebar
+    this.closeMobileSidebar();
+
     // Hide all tab panels
     document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
