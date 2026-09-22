@@ -4,7 +4,7 @@
 
 window.TomaAttendance = {
   currentCategory: 'sunday_school', // Default tab for recording
-  historyCategory: 'all', // Default tab for history
+  historyCategory: 'mass', // Default tab for history
 
   init: async function () {
     this.setDefaultDate();
@@ -49,7 +49,10 @@ window.TomaAttendance = {
     const children = await TomaDB.getChildren();
     const searchVal = (document.getElementById('att-search-input')?.value || '').toLowerCase();
 
-    const filtered = children.filter(c => c.name.toLowerCase().includes(searchVal) || c.child_code.toLowerCase().includes(searchVal));
+    const filtered = children
+      .filter(c => c.name.toLowerCase().includes(searchVal) || c.child_code.toLowerCase().includes(searchVal))
+      .sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+
 
     if (filtered.length === 0) {
       listContainer.innerHTML = `<div style="text-align:center; padding:30px; color:#64748B;">No matching children found.</div>`;
@@ -69,6 +72,36 @@ window.TomaAttendance = {
       </div>
     `).join('');
   },
+
+  toggleDateCard: function (cardIndex) {
+    const card = document.getElementById(`att-date-card-${cardIndex}`);
+    if (card) {
+      card.classList.toggle('open');
+    }
+  },
+
+  deleteAttendanceRecordFromHistory: function (recordId, childId, dateStr, childName) {
+    TomaUtils.showConfirmModal({
+      title: 'Remove Attendance Record',
+      message: `Are you sure you want to remove "${childName}" from attendance on ${dateStr}?`,
+      icon: '🗑️',
+      confirmText: 'Remove Entry',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        try {
+          await TomaDB.deleteAttendanceRecord(recordId, childId, dateStr);
+          TomaUtils.showToast(`Removed ${childName} from attendance on ${dateStr}.`, 'success');
+          await this.renderAttendanceHistory();
+        } catch (err) {
+          TomaUtils.showToast(err.message || 'Failed to delete attendance record', 'error');
+        }
+      }
+    });
+  },
+
+
+
+
 
   toggleSelectChild: function (rowElem) {
     const cb = rowElem.querySelector('.att-checkbox');
@@ -133,10 +166,12 @@ window.TomaAttendance = {
     }
   },
 
-  // Render Attendance History Audit Log Table (like Score Audit Log in Manual Score tab)
+  // Render Attendance History Grouped by Date for the Selected Category
   renderAttendanceHistory: async function () {
     const historyContainer = document.getElementById('attendance-history-container');
     if (!historyContainer) return;
+    this.setupEventListeners();
+
 
     const records = await TomaDB.getAttendanceRecords();
     const children = await TomaDB.getChildren();
@@ -175,12 +210,20 @@ window.TomaAttendance = {
 
     // Filter records by category, search query, and date
     const filteredRecords = records.filter(r => {
-      const typeCode = (r.attendance_types && r.attendance_types.code) || typeCodeMap.get(String(r.attendance_type_id)) || String(r.attendance_type_id);
-      
+      const rawTypeId = String(r.attendance_type_id || r.attendance_type || '');
+      const rawTypeCode = (r.attendance_types && r.attendance_types.code) ? r.attendance_types.code : '';
+      const mappedCode = typeCodeMap.get(rawTypeId) || typeCodeMap.get(String(r.attendance_type_id)) || rawTypeCode || rawTypeId;
+
       // Category filter
-      if (this.historyCategory !== 'all' && typeCode !== this.historyCategory) {
-        return false;
+      if (this.historyCategory !== 'all') {
+        const matchesCat = (
+          mappedCode === this.historyCategory ||
+          rawTypeCode === this.historyCategory ||
+          rawTypeId === this.historyCategory
+        );
+        if (!matchesCat) return false;
       }
+
 
       // Date filter
       if (dateQ && r.attendance_date !== dateQ) {
@@ -202,7 +245,7 @@ window.TomaAttendance = {
     if (filteredRecords.length === 0) {
       historyContainer.innerHTML = `
         <div style="text-align:center; padding:40px; background:white; border-radius:12px; border:1px solid #E2E8F0; color:#64748B;">
-          No matching attendance audit logs found for the selected filters.
+          No matching attendance records found for the selected category or filters.
         </div>
       `;
       return;
@@ -228,39 +271,86 @@ window.TomaAttendance = {
       }
     };
 
-    historyContainer.innerHTML = `
-      <div class="table-responsive">
-        <table class="custom-table">
-          <thead>
-            <tr>
-              <th>Attendance Date</th>
-              <th>Category Event</th>
-              <th>Child Name</th>
-              <th>Child Code / ID</th>
-              <th>Recorded By</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filteredRecords.map(r => {
-              const child = (r.children && r.children.name) ? r.children : childMap.get(String(r.child_id));
-              const typeCode = (r.attendance_types && r.attendance_types.code) || typeCodeMap.get(String(r.attendance_type_id)) || 'attendance';
-              const typeName = (r.attendance_types && r.attendance_types.name) || typeNameMap.get(String(r.attendance_type_id)) || typeCode.replace('_', ' ').toUpperCase();
-              
-              return `
-                <tr>
-                  <td><strong>📅 ${TomaUtils.formatDate(r.attendance_date)}</strong></td>
-                  <td><span class="badge ${getCategoryBadgeClass(typeCode)}">${getCategoryEmoji(typeCode)} ${typeName}</span></td>
-                  <td><strong>${child ? child.name : 'Child Record'}</strong></td>
-                  <td><span class="child-code">${child ? child.child_code : 'N/A'}</span></td>
-                  <td><span class="badge badge-navy">👤 ${r.recorded_by || 'admin'}</span></td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
+    // Group filtered records by attendance_date
+    const groupedByDate = new Map();
+    filteredRecords.forEach(r => {
+      const dateKey = r.attendance_date || 'Unknown Date';
+      if (!groupedByDate.has(dateKey)) {
+        groupedByDate.set(dateKey, []);
+      }
+      groupedByDate.get(dateKey).push(r);
+    });
+
+    // Sort dates descending
+    const sortedDateKeys = Array.from(groupedByDate.keys()).sort((a, b) => new Date(b) - new Date(a));
+
+    let html = `<div class="att-grouped-wrapper">`;
+
+    sortedDateKeys.forEach((dateStr, idx) => {
+      const dateRecords = groupedByDate.get(dateStr);
+      const formattedDate = TomaUtils.formatDate ? TomaUtils.formatDate(dateStr) : dateStr;
+
+      html += `
+        <div class="att-date-card ${idx === 0 ? 'open' : ''}" id="att-date-card-${idx}">
+          <div class="att-date-header" onclick="TomaAttendance.toggleDateCard('${idx}')" style="cursor:pointer; user-select:none;">
+            <div class="att-date-title-wrap">
+              <span class="att-date-icon">📅</span>
+              <div>
+                <h4 class="att-date-heading">${formattedDate}</h4>
+                <span class="att-date-subtext">Recorded Date: ${dateStr}</span>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div class="att-date-count-badge">
+                👥 <strong>${dateRecords.length}</strong> ${dateRecords.length === 1 ? 'Child' : 'Children'} Recorded
+              </div>
+              <span class="att-accordion-arrow">▼</span>
+            </div>
+          </div>
+          
+          <div class="att-date-body">
+            <div class="att-names-grid">
+              ${[...dateRecords].sort((a, b) => {
+                const nameA = (a.children && a.children.name) ? a.children.name : (childMap.get(String(a.child_id))?.name || '');
+                const nameB = (b.children && b.children.name) ? b.children.name : (childMap.get(String(b.child_id))?.name || '');
+                return nameA.localeCompare(nameB, 'en', { sensitivity: 'base' });
+              }).map(r => {
+                const child = (r.children && r.children.name) ? r.children : childMap.get(String(r.child_id));
+                const typeCode = (r.attendance_types && r.attendance_types.code) || typeCodeMap.get(String(r.attendance_type_id)) || 'attendance';
+                const typeName = (r.attendance_types && r.attendance_types.name) || typeNameMap.get(String(r.attendance_type_id)) || typeCode.replace('_', ' ').toUpperCase();
+                const childName = child ? child.name : 'Unknown Child';
+                const childCode = child ? child.child_code : 'N/A';
+                const initial = childName.charAt(0).toUpperCase();
+
+
+                return `
+                  <div class="att-child-chip">
+                    <div class="att-child-avatar">${initial}</div>
+                    <div class="att-child-info">
+                      <strong class="att-child-name">${childName}</strong>
+                      <div class="att-child-meta">
+                        <span class="child-code">${childCode}</span>
+                        ${this.historyCategory === 'all' ? `<span class="badge ${getCategoryBadgeClass(typeCode)}" style="font-size:0.7rem; padding:2px 6px;">${getCategoryEmoji(typeCode)} ${typeName}</span>` : ''}
+                      </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                      <div class="att-status-check" title="Present">✓</div>
+                      <button class="btn btn-outline-danger btn-sm" onclick="event.stopPropagation(); TomaAttendance.deleteAttendanceRecordFromHistory('${r.id}', '${r.child_id}', '${dateStr}', '${childName.replace(/'/g, "\\'")}')" title="Delete record for this child on this date">🗑️ Delete</button>
+                    </div>
+
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    historyContainer.innerHTML = html;
   },
+
 
   setupEventListeners: function () {
     if (this._listenersAttached) return;

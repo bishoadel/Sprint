@@ -12,7 +12,7 @@
  * ==============================================================================
  */
 
-window.EMAIL_CONFIG = {
+const EMAIL_CONFIG = {
   // Automated Birthday Notification Recipient Email Addresses
   NOTIFICATION_EMAILS: [
     'bishoyadel733@gmail.com',
@@ -31,6 +31,11 @@ window.EMAIL_CONFIG = {
   SENDER_EMAIL: 'Toma_el_rasol@church.org'
 };
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = window.EMAIL_CONFIG;
+if (typeof window !== 'undefined') {
+  window.EMAIL_CONFIG = EMAIL_CONFIG;
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = EMAIL_CONFIG;
+}
+

@@ -150,13 +150,21 @@ window.TomaChildren = {
   },
 
   confirmDelete: function (childId) {
-    if (confirm('Are you sure you want to delete this child? All attendance and points history for this child will be removed.')) {
-      TomaDB.deleteChild(childId).then(() => {
+    TomaUtils.showConfirmModal({
+      title: 'Delete Child Record',
+      message: 'Are you sure you want to delete this child? All attendance and points history for this child will be removed.',
+      icon: '🗑️',
+      confirmText: 'Delete Child',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        await TomaDB.deleteChild(childId);
         TomaUtils.showToast('Child deleted successfully.', 'success');
-        this.loadChildren();
-      });
-    }
+        await this.loadChildren();
+        if (window.TomaLeaderboard) await TomaLeaderboard.renderAdminLeaderboard();
+      }
+    });
   },
+
 
   setupEventListeners: function () {
     if (this._listenersAttached) return;

@@ -23,4 +23,6 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          EMAIL_WEBHOOK_URL: ${{ secrets.EMAIL_WEBHOOK_URL }}
         run: node scripts/send_birthday_emails.js
+

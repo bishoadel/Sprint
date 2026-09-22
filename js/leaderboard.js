@@ -37,6 +37,7 @@ window.TomaLeaderboard = {
               <th>Child ID</th>
               <th>Birthdate</th>
               <th>Total Points</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -54,6 +55,9 @@ window.TomaLeaderboard = {
                   <td><span class="child-code">${child.child_code}</span></td>
                   <td>${TomaUtils.formatDate(child.birth_date)}</td>
                   <td><strong style="color:var(--gold-dark); font-size:1.1rem;">⭐ ${child.total_points} Pts</strong></td>
+                  <td>
+                    <button class="btn btn-outline-danger btn-sm" onclick="TomaLeaderboard.confirmResetChildScore('${child.id}', '${child.name.replace(/'/g, "\\'")}')" title="Reset score to 0">🔄 Reset Score</button>
+                  </td>
                 </tr>
               `;
             }).join('')}
@@ -62,6 +66,52 @@ window.TomaLeaderboard = {
       </div>
     `;
   },
+
+  confirmResetChildScore: function (childId, childName) {
+    TomaUtils.showConfirmModal({
+      title: 'Reset Student Score',
+      message: `Are you sure you want to reset the score of "${childName}" to 0 points?`,
+      icon: '🔄',
+      confirmText: 'Reset Score',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        try {
+          const user = TomaAuth.getCurrentUser();
+          const adminUser = user ? user.username : 'admin';
+          await TomaDB.resetChildScore(childId, adminUser);
+          TomaUtils.showToast(`Score for ${childName} has been reset to 0.`, 'success');
+          await this.renderAdminLeaderboard();
+          if (window.TomaChildren) await TomaChildren.loadChildren();
+        } catch (err) {
+          TomaUtils.showToast(err.message || 'Failed to reset score', 'error');
+        }
+      }
+    });
+  },
+
+  confirmResetAllScores: function () {
+    TomaUtils.showConfirmModal({
+      title: 'Reset All Scores to 0',
+      message: '⚠️ Are you sure you want to reset ALL children\'s scores to 0? Everyone will start fresh from 0.',
+      icon: '🔄',
+      confirmText: 'Yes, Reset All Scores',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        try {
+          const user = TomaAuth.getCurrentUser();
+          const adminUser = user ? user.username : 'admin';
+          await TomaDB.resetAllScores(adminUser);
+          TomaUtils.showToast('All student scores have been reset to 0 successfully!', 'success');
+          await this.renderAdminLeaderboard();
+          if (window.TomaChildren) await TomaChildren.loadChildren();
+        } catch (err) {
+          TomaUtils.showToast(err.message || 'Failed to reset all scores', 'error');
+        }
+      }
+    });
+  },
+
+
 
   renderUserLeaderboard: async function (containerId, currentChildId) {
     const container = document.getElementById(containerId);

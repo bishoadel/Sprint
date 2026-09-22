@@ -107,17 +107,58 @@ async function runBirthdayEmailCheck() {
   console.log('Automated birthday email check completed successfully.');
 }
 
+const TomaEmailService = require('../js/email-service.js');
+const emailConfig = require('../js/email-config.js');
+
 async function sendMonthlyDigestEmail(list, recipients) {
+  const monthName = new Date().toLocaleString('en-US', { month: 'long' });
+  const emailPayload = TomaEmailService.buildMonthlyRosterEmail(monthName, list);
   console.log(`[EMAIL DISPATCH] Monthly Birthday Digest -> ${recipients.join(', ')}`);
-  // Dispatch logic using SMTP / Resend / Webhook
+  console.log(`[EMAIL SUBJECT] ${emailPayload.subject}`);
+  
+  if (process.env.EMAIL_WEBHOOK_URL) {
+    try {
+      console.log('Dispatching email payload to WEBHOOK API:', process.env.EMAIL_WEBHOOK_URL);
+      await fetch(process.env.EMAIL_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailPayload)
+      });
+      console.log('✅ Monthly Digest Webhook Dispatch Succeeded!');
+    } catch (err) {
+      console.warn('Webhook dispatch failed:', err.message);
+    }
+  } else {
+    console.log('ℹ️ No EMAIL_WEBHOOK_URL specified. HTML payload built successfully:');
+    console.log(emailPayload.html.substring(0, 300) + '...');
+  }
 }
 
 async function sendTomorrowReminderEmail(list, recipients) {
+  const emailPayload = TomaEmailService.buildTomorrowReminderEmail(list);
   console.log(`[EMAIL DISPATCH] Tomorrow Birthday Alert -> ${recipients.join(', ')}`);
-  // Dispatch logic using SMTP / Resend / Webhook
+  console.log(`[EMAIL SUBJECT] ${emailPayload.subject}`);
+
+  if (process.env.EMAIL_WEBHOOK_URL) {
+    try {
+      console.log('Dispatching email payload to WEBHOOK API:', process.env.EMAIL_WEBHOOK_URL);
+      await fetch(process.env.EMAIL_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailPayload)
+      });
+      console.log('✅ Tomorrow Reminder Webhook Dispatch Succeeded!');
+    } catch (err) {
+      console.warn('Webhook dispatch failed:', err.message);
+    }
+  } else {
+    console.log('ℹ️ No EMAIL_WEBHOOK_URL specified. HTML payload built successfully:');
+    console.log(emailPayload.html.substring(0, 300) + '...');
+  }
 }
 
 runBirthdayEmailCheck().catch(err => {
   console.error('Error during automated email runner execution:', err);
   process.exit(1);
 });
+

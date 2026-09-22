@@ -109,10 +109,12 @@ window.TomaPointsEngine = {
     const children = await TomaDB.getChildren();
     const childMap = new Map(children.map(c => [c.id, c]));
 
-    const sorted = [...txs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 30);
+    // Filter to ONLY display records of manual score adjustments
+    const manualTxs = txs.filter(t => t.source_type === 'manual' || !t.source_type || t.source_type === 'manual_adjustment');
+    const sorted = [...manualTxs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 30);
 
     if (sorted.length === 0) {
-      container.innerHTML = `<div style="text-align:center; padding:20px; color:#64748B;">No point audit records yet.</div>`;
+      container.innerHTML = `<div style="text-align:center; padding:20px; color:#64748B;">No manual score adjustment audit records yet.</div>`;
       return;
     }
 
@@ -139,7 +141,7 @@ window.TomaPointsEngine = {
                   <td><strong>${child ? child.name : 'Unknown'}</strong></td>
                   <td><span class="child-code">${child ? child.child_code : 'N/A'}</span></td>
                   <td><strong style="color:${isPositive ? '#10B981' : '#EF4444'};">${isPositive ? '+' : ''}${t.points} Pts</strong></td>
-                  <td>${t.description || 'Adjustment'}</td>
+                  <td>${t.description || 'Manual Score Adjustment'}</td>
                   <td><span class="badge badge-navy">${t.created_by || 'admin'}</span></td>
                 </tr>
               `;
@@ -243,13 +245,20 @@ window.TomaPointsEngine = {
   },
 
   confirmDeleteRule: function (ruleId) {
-    if (confirm('Delete this point rule?')) {
-      TomaDB.deletePointRule(ruleId).then(() => {
-        TomaUtils.showToast('Rule deleted.', 'success');
-        this.renderPointRulesTable();
-      });
-    }
+    TomaUtils.showConfirmModal({
+      title: 'Delete Point Rule',
+      message: 'Are you sure you want to delete this point rule?',
+      icon: '🗑️',
+      confirmText: 'Delete Rule',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        await TomaDB.deletePointRule(ruleId);
+        TomaUtils.showToast('Point rule deleted.', 'success');
+        await this.renderPointRulesTable();
+      }
+    });
   },
+
 
   setupScoreEventListeners: function () {
     const search = document.getElementById('score-search-input');

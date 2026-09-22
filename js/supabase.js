@@ -7,7 +7,12 @@
 
   // Initial Seed Schema for LocalStorage Fallback
   const INITIAL_SEED = {
-    children: [],
+    children: [
+      { id: 'c1', child_code: '48291', name: 'Kirolos Mina', birth_date: '2015-05-14', created_at: new Date().toISOString() },
+      { id: 'c2', child_code: '10429', name: 'Bishoy Adel', birth_date: '2014-09-22', created_at: new Date().toISOString() },
+      { id: 'c3', child_code: '30482', name: 'Mary Sameh', birth_date: '2016-01-10', created_at: new Date().toISOString() },
+      { id: 'c4', child_code: '88214', name: 'Mark Youssef', birth_date: '2015-11-04', created_at: new Date().toISOString() }
+    ],
     admins: [
       { id: 'a1', username: 'admin', password: '123', role: 'general_admin' },
       { id: 'a2', username: 'attendance', password: '123', role: 'attendance_admin' },
@@ -27,7 +32,15 @@
       { id: 'pr_5', event_name: 'Bible Competition', event_type: 'custom', points: 50, active: true },
       { id: 'pr_6', event_name: 'Helping Service', event_type: 'custom', points: 20, active: true }
     ],
-    attendance_records: [],
+    attendance_records: [
+      { id: 'ar_1', child_id: 'c1', attendance_type_id: 'att_1', attendance_date: '2026-09-22', recorded_by: 'admin', created_at: new Date().toISOString() },
+      { id: 'ar_2', child_id: 'c2', attendance_type_id: 'att_1', attendance_date: '2026-09-22', recorded_by: 'admin', created_at: new Date().toISOString() },
+      { id: 'ar_3', child_id: 'c3', attendance_type_id: 'att_1', attendance_date: '2026-09-22', recorded_by: 'admin', created_at: new Date().toISOString() },
+      { id: 'ar_4', child_id: 'c1', attendance_type_id: 'att_2', attendance_date: '2026-09-20', recorded_by: 'admin', created_at: new Date().toISOString() },
+      { id: 'ar_5', child_id: 'c4', attendance_type_id: 'att_2', attendance_date: '2026-09-20', recorded_by: 'admin', created_at: new Date().toISOString() },
+      { id: 'ar_6', child_id: 'c2', attendance_type_id: 'att_3', attendance_date: '2026-09-18', recorded_by: 'admin', created_at: new Date().toISOString() },
+      { id: 'ar_7', child_id: 'c3', attendance_type_id: 'att_4', attendance_date: '2026-09-15', recorded_by: 'admin', created_at: new Date().toISOString() }
+    ],
     point_transactions: [],
     eftkad_records: [],
     gifts: [
@@ -51,7 +64,10 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SEED));
         return INITIAL_SEED;
       }
-      return JSON.parse(data);
+      const db = JSON.parse(data);
+      if (!db.children || db.children.length === 0) db.children = INITIAL_SEED.children;
+      if (!db.attendance_records || db.attendance_records.length === 0) db.attendance_records = INITIAL_SEED.attendance_records;
+      return db;
     } catch (e) {
       console.error('LocalStorage read error:', e);
       return INITIAL_SEED;
@@ -101,19 +117,28 @@
 
     // --- CHILDREN ---
     getChildren: async function () {
+      let list = [];
       const client = getSupabaseClient();
       if (client) {
         try {
-          const { data, error } = await client.from('children').select('*').order('created_at', { ascending: false });
-          if (!error && data) return data;
-          console.warn('Supabase getChildren query error:', error);
+          const { data, error } = await client.from('children').select('*').order('name', { ascending: true });
+          if (!error && data) list = data;
+          else {
+            const db = getDB();
+            list = db.children || [];
+          }
         } catch (e) {
-          console.warn('Supabase getChildren exception:', e);
+          const db = getDB();
+          list = db.children || [];
         }
+      } else {
+        const db = getDB();
+        list = db.children || [];
       }
-      const db = getDB();
-      return db.children || [];
+      return list.sort((a, b) => (a.name || '').localeCompare(b.name || '', ['ar', 'en'], { sensitivity: 'base' }));
     },
+
+
 
     getChildByCode: async function (code) {
       const children = await this.getChildren();
@@ -287,6 +312,34 @@
       return newTx;
     },
 
+    resetChildScore: async function (childId, adminUser = 'admin') {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          await client.from('point_transactions').delete().eq('child_id', childId);
+        } catch (e) {}
+      }
+      const db = getDB();
+      db.point_transactions = (db.point_transactions || []).filter(t => String(t.child_id) !== String(childId));
+      saveDB(db);
+      return true;
+    },
+
+    resetAllScores: async function (adminUser = 'admin') {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          await client.from('point_transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (e) {}
+      }
+      const db = getDB();
+      db.point_transactions = [];
+      saveDB(db);
+      return true;
+    },
+
+
+
     // --- POINT RULES ---
     getPointRules: async function () {
       const client = getSupabaseClient();
@@ -365,25 +418,63 @@
     },
 
     getAttendanceRecords: async function () {
+      const db = getDB();
+      const deletedSet = new Set((db.deleted_attendance_ids || []).map(String));
       const client = getSupabaseClient();
+
       if (client) {
         try {
           const { data, error } = await client.from('attendance_records').select('*, children(id, name, child_code), attendance_types(id, code, name)').order('created_at', { ascending: false });
           if (!error && data) {
-            const db = getDB();
             const localRecs = db.attendance_records || [];
             const mergedMap = new Map();
-            data.forEach(r => mergedMap.set(String(r.id), r));
+            data.forEach(r => {
+              if (!deletedSet.has(String(r.id))) {
+                mergedMap.set(String(r.id), r);
+              }
+            });
             localRecs.forEach(r => {
-              if (r.id && !mergedMap.has(String(r.id))) mergedMap.set(String(r.id), r);
+              if (r.id && !deletedSet.has(String(r.id)) && !mergedMap.has(String(r.id))) {
+                mergedMap.set(String(r.id), r);
+              }
             });
             return Array.from(mergedMap.values());
           }
         } catch (e) {}
       }
-      const db = getDB();
-      return db.attendance_records || [];
+      return (db.attendance_records || []).filter(r => !deletedSet.has(String(r.id)));
     },
+
+    deleteAttendanceRecord: async function (recordId, childId, dateStr) {
+      const client = getSupabaseClient();
+      if (client) {
+        try {
+          if (recordId) {
+            await client.from('attendance_records').delete().eq('id', recordId);
+          }
+          if (childId && dateStr) {
+            await client.from('attendance_records').delete().match({ child_id: childId, attendance_date: dateStr });
+          }
+        } catch (e) {
+          console.warn('Supabase delete exception:', e);
+        }
+      }
+
+      const db = getDB();
+      if (!db.deleted_attendance_ids) db.deleted_attendance_ids = [];
+      if (recordId) db.deleted_attendance_ids.push(String(recordId));
+
+      db.attendance_records = (db.attendance_records || []).filter(r => {
+        if (recordId && String(r.id) === String(recordId)) return false;
+        if (childId && dateStr && String(r.child_id) === String(childId) && String(r.attendance_date) === String(dateStr)) return false;
+        return true;
+      });
+      saveDB(db);
+      return true;
+    },
+
+
+
 
     recordBulkAttendance: async function (childIds, attendanceTypeCode, dateStr, adminUser) {
       const client = getSupabaseClient();

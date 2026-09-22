@@ -131,6 +131,7 @@ window.TomaAdminApp = {
         await TomaAttendance.renderAttendanceHistory();
         break;
       case 'eftkad_entry':
+
         await TomaEftkad.init();
         break;
       case 'eftkad_history':

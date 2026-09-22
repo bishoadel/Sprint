@@ -19,9 +19,9 @@ jobs:
           node-version: '18'
 
       - name: Run Automated Birthday Reminder Email Dispatch Script
-        run: |
-          node -e "
-            const emailConfig = require('./js/email-config.js');
-            const emailService = require('./js/email-service.js');
-            console.log('⚡ Running Automated 24/7 Birthday Email Trigger for:', emailConfig.NOTIFICATION_EMAILS.join(', '));
-          "
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          EMAIL_WEBHOOK_URL: ${{ secrets.EMAIL_WEBHOOK_URL }}
+        run: node scripts/send_birthday_emails.js
+

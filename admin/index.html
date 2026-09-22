@@ -53,6 +53,8 @@
         <a class="nav-item" data-tab="attendance_history">
           <span class="icon">📜</span> Attendance History
         </a>
+
+
         <a class="nav-item" data-tab="eftkad_entry">
           <span class="icon">🤝</span> Eftkad Entry
         </a>
@@ -123,11 +125,15 @@
           <div class="card-container">
             <div class="card-header-actions">
               <h3>Class Points Leaderboard</h3>
-              <div class="search-input-wrap">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="lb-search-input" class="form-control" placeholder="Filter leaderboard...">
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div class="search-input-wrap">
+                  <span class="search-icon">🔍</span>
+                  <input type="text" id="lb-search-input" class="form-control" placeholder="Filter leaderboard...">
+                </div>
+                <button class="btn btn-outline-danger btn-sm" onclick="TomaLeaderboard.confirmResetAllScores()" title="Reset all children scores to 0">🔄 Reset All Scores</button>
               </div>
             </div>
+
             <div id="admin-leaderboard-container"></div>
           </div>
         </section>
@@ -223,12 +229,13 @@
         </section>
 
         <!-- 6. ATTENDANCE HISTORY TAB -->
-        <section class="tab-panel" id="tab-attendance-history">
+        <section class="tab-panel" id="tab-attendance_history">
+
           <div class="card-container">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
               <div>
-                <h3 style="margin:0;">Attendance History Audit Log</h3>
-                <p style="color:#64748B; font-size:0.85rem; margin:0;">Audit log of attendance records across all 4 categories with date filtering.</p>
+                <h3 style="margin:0;">Attendance History Logs</h3>
+                <p style="color:#64748B; font-size:0.85rem; margin:0;">View attendance history categorized by event type and grouped by date.</p>
               </div>
               <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <input type="text" id="att-history-search-input" class="form-control" placeholder="Search child..." style="width:200px;">
@@ -237,18 +244,21 @@
               </div>
             </div>
 
-            <!-- Category Sub-tabs beside each other for Mass, Sunday School, Hymns, Bible Study, All -->
+            <!-- Attendance Category Tabs for History -->
             <div class="attendance-type-selector" style="margin-bottom:24px;">
-              <button class="att-history-tab active" data-category="all" onclick="TomaAttendance.switchHistoryCategory('all')">📋 All Categories</button>
-              <button class="att-history-tab" data-category="mass" onclick="TomaAttendance.switchHistoryCategory('mass')">⛪ Mass</button>
+              <button class="att-history-tab active" data-category="mass" onclick="TomaAttendance.switchHistoryCategory('mass')">⛪ Mass</button>
               <button class="att-history-tab" data-category="sunday_school" onclick="TomaAttendance.switchHistoryCategory('sunday_school')">📖 Sunday School</button>
               <button class="att-history-tab" data-category="hymns" onclick="TomaAttendance.switchHistoryCategory('hymns')">🎵 Hymns</button>
               <button class="att-history-tab" data-category="bible_study" onclick="TomaAttendance.switchHistoryCategory('bible_study')">💡 Bible Study</button>
+              <button class="att-history-tab" data-category="all" onclick="TomaAttendance.switchHistoryCategory('all')">📋 All Categories</button>
             </div>
 
             <div id="attendance-history-container"></div>
           </div>
         </section>
+
+
+
 
         <!-- 7. EFTKAD ENTRY TAB -->
         <section class="tab-panel" id="tab-eftkad_entry">

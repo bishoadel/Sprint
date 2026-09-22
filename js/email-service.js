@@ -2,12 +2,26 @@
  * Toma el Rasol - Birthday Email Automation & Template Generator Engine
  */
 
-window.TomaEmailService = {
+const TomaEmailService = {
+  /**
+   * Helper to retrieve notification emails safely
+   */
+  getNotificationEmails: function() {
+    if (typeof window !== 'undefined' && window.EMAIL_CONFIG && window.EMAIL_CONFIG.NOTIFICATION_EMAILS) {
+      return window.EMAIL_CONFIG.NOTIFICATION_EMAILS;
+    }
+    try {
+      const emailConfig = require('./email-config.js');
+      if (emailConfig && emailConfig.NOTIFICATION_EMAILS) return emailConfig.NOTIFICATION_EMAILS;
+    } catch (e) {}
+    return ['bishoyadel733@gmail.com', 'Tonyandsandra.26@gmail.com'];
+  },
+
   /**
    * Generates the Beginning of Month Birthday Roster HTML Email
    */
   buildMonthlyRosterEmail: function (monthName, birthdayChildren) {
-    const emailList = (window.EMAIL_CONFIG && window.EMAIL_CONFIG.NOTIFICATION_EMAILS) || ['bishoyadel733@gmail.com'];
+    const emailList = this.getNotificationEmails();
     
     const childrenRows = birthdayChildren.length > 0 
       ? birthdayChildren.map((c, i) => `
@@ -75,7 +89,7 @@ window.TomaEmailService = {
    * Generates Tomorrow's 1-Day Advance Birthday Reminder HTML Email
    */
   buildTomorrowReminderEmail: function (tomorrowChildren) {
-    const emailList = (window.EMAIL_CONFIG && window.EMAIL_CONFIG.NOTIFICATION_EMAILS) || ['bishoyadel733@gmail.com', 'Tonyandsandra.26@gmail.com'];
+    const emailList = this.getNotificationEmails();
     
     const childrenCards = tomorrowChildren.map(c => `
       <div style="background:#FAF8F5; border:1px solid #FCD34D; padding:16px; border-radius:8px; margin-bottom:12px;">
@@ -150,30 +164,36 @@ window.TomaEmailService = {
    * Browser & API Email Dispatcher Engine
    */
   dispatchEmail: async function (emailData) {
-    const recipients = emailData.recipients || ['bishoyadel733@gmail.com', 'Tonyandsandra.26@gmail.com'];
+    const recipients = emailData.recipients || this.getNotificationEmails();
     const recipientsStr = recipients.join(',');
 
     console.log('📧 Dispatching Birthday Email from Toma_el_rasol:', emailData.subject, 'To:', recipientsStr);
 
-    // Create plain text mailto body
-    const bodyText = `From: Toma_el_rasol\nTo: ${recipientsStr}\nSubject: ${emailData.subject}\n\nThis is an automated birthday notification from Toma_el_rasol.\n\nPlease check your admin dashboard for full details.`;
+    if (typeof window !== 'undefined') {
+      // Create plain text mailto body
+      const bodyText = `From: Toma_el_rasol\nTo: ${recipientsStr}\nSubject: ${emailData.subject}\n\nThis is an automated birthday notification from Toma_el_rasol.\n\nPlease check your admin dashboard for full details.`;
+      const mailtoUrl = `mailto:${encodeURIComponent(recipientsStr)}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(bodyText)}`;
+      try {
+        window.location.href = mailtoUrl;
+      } catch (e) {
+        console.warn('Mailto link error:', e);
+      }
 
-    // Trigger Mail Client directly
-    const mailtoUrl = `mailto:${encodeURIComponent(recipientsStr)}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(bodyText)}`;
-    
-    try {
-      window.location.href = mailtoUrl;
-    } catch (e) {
-      console.warn('Mailto link error:', e);
-    }
-
-    if (typeof TomaUtils !== 'undefined' && TomaUtils.showToast) {
-      TomaUtils.showToast(`📧 Opening email reminder from Toma_el_rasol for ${recipients.join(', ')}!`, 'success');
+      if (typeof TomaUtils !== 'undefined' && TomaUtils.showToast) {
+        TomaUtils.showToast(`📧 Opening email reminder from Toma_el_rasol for ${recipients.join(', ')}!`, 'success');
+      }
+    } else {
+      console.log('⚡ Server/Node.js Environment: HTML Email Generated Successfully.');
     }
     return true;
   }
 };
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = window.TomaEmailService;
+if (typeof window !== 'undefined') {
+  window.TomaEmailService = TomaEmailService;
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = TomaEmailService;
+}
+
