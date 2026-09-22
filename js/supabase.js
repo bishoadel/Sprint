@@ -644,14 +644,35 @@
     // --- STORE & PURCHASES ---
     getGifts: async function () {
       const client = getSupabaseClient();
+      const db = getDB();
+      const localGifts = db.gifts || [];
+      const mergedMap = new Map();
+
+      localGifts.forEach(g => {
+        if (g && g.id !== undefined && g.id !== null) {
+          mergedMap.set(String(g.id), g);
+        }
+      });
+
       if (client) {
         try {
           const { data, error } = await client.from('gifts').select('*').order('created_at', { ascending: false });
-          if (!error && data && data.length > 0) return data;
-        } catch (e) {}
+          if (!error && data) {
+            data.forEach(g => {
+              mergedMap.set(String(g.id), g);
+            });
+          }
+        } catch (e) {
+          console.warn('Supabase getGifts error:', e);
+        }
       }
-      const db = getDB();
-      return db.gifts || [];
+
+      const giftsList = Array.from(mergedMap.values());
+      if (giftsList.length > 0) {
+        db.gifts = giftsList;
+        saveDB(db);
+      }
+      return giftsList;
     },
 
     saveGift: async function (giftData) {
@@ -661,33 +682,46 @@
         description: giftData.description || '',
         points_price: Number(giftData.points_price),
         image_url: giftData.image_url || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400',
-        active: true
+        active: giftData.active !== undefined ? giftData.active : true
       };
+
+      const db = getDB();
+      if (!db.gifts) db.gifts = [];
+
+      let savedGiftId = giftData.id;
 
       if (client) {
         try {
           if (giftData.id) {
-            await client.from('gifts').update(payload).eq('id', giftData.id);
+            const { error } = await client.from('gifts').update(payload).eq('id', giftData.id);
+            if (error) console.error('Supabase update gift error:', error);
           } else {
-            await client.from('gifts').insert([payload]);
+            const { data, error } = await client.from('gifts').insert([payload]).select();
+            if (!error && data && data.length > 0) {
+              savedGiftId = data[0].id;
+            }
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Supabase saveGift exception:', e);
+        }
       }
 
-      const db = getDB();
-      if (giftData.id) {
-        const idx = db.gifts.findIndex(g => g.id === giftData.id);
+      if (savedGiftId) {
+        const idx = db.gifts.findIndex(g => String(g.id) === String(savedGiftId));
         if (idx !== -1) {
-          db.gifts[idx] = { ...db.gifts[idx], ...payload };
+          db.gifts[idx] = { ...db.gifts[idx], ...payload, id: savedGiftId };
+        } else {
+          db.gifts.push({ id: savedGiftId, ...payload, created_at: new Date().toISOString() });
         }
       } else {
-        const newGift = {
-          id: 'g_' + Date.now(),
+        const newId = 'g_' + Date.now();
+        db.gifts.push({
+          id: newId,
           ...payload,
           created_at: new Date().toISOString()
-        };
-        db.gifts.push(newGift);
+        });
       }
+
       saveDB(db);
       return true;
     },
@@ -697,25 +731,48 @@
       if (client) {
         try {
           await client.from('gifts').delete().eq('id', giftId);
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Supabase deleteGift error:', e);
+        }
       }
 
       const db = getDB();
-      db.gifts = db.gifts.filter(g => g.id !== giftId);
+      db.gifts = (db.gifts || []).filter(g => String(g.id) !== String(giftId));
       saveDB(db);
       return true;
     },
 
     getPurchases: async function () {
       const client = getSupabaseClient();
+      const db = getDB();
+      const localPurchases = db.purchases || [];
+      const mergedMap = new Map();
+
+      localPurchases.forEach(p => {
+        if (p && p.id !== undefined && p.id !== null) {
+          mergedMap.set(String(p.id), p);
+        }
+      });
+
       if (client) {
         try {
-          const { data, error } = await client.from('purchases').select('*');
-          if (!error && data) return data;
-        } catch (e) {}
+          const { data, error } = await client.from('purchases').select('*').order('created_at', { ascending: false });
+          if (!error && data) {
+            data.forEach(p => {
+              mergedMap.set(String(p.id), p);
+            });
+          }
+        } catch (e) {
+          console.warn('Supabase getPurchases error:', e);
+        }
       }
-      const db = getDB();
-      return db.purchases || [];
+
+      const purchasesList = Array.from(mergedMap.values());
+      if (purchasesList.length > 0) {
+        db.purchases = purchasesList;
+        saveDB(db);
+      }
+      return purchasesList;
     },
 
     purchaseGift: async function (childId, giftId) {
@@ -727,21 +784,20 @@
       const purchases = await this.getPurchases();
       const existingPurchase = purchases.find(p => String(p.child_id) === String(childId));
       if (existingPurchase) {
-        throw new Error('You have already purchased a gift during this session.');
+        throw new Error('A gift has already been claimed for this child. 1 gift limit per child.');
       }
 
       const gifts = await this.getGifts();
-      const gift = gifts.find(g => String(g.id) === String(giftId) && g.active);
-      if (!gift) {
-        throw new Error('Gift is not available.');
+      const gift = gifts.find(g => String(g.id) === String(giftId));
+      if (!gift || gift.active === false) {
+        throw new Error('Selected gift is not available.');
       }
 
       const currentPoints = await this.getChildPoints(childId);
       if (currentPoints < gift.points_price) {
-        throw new Error(`Insufficient points. You need ${gift.points_price} points, but have ${currentPoints}.`);
+        throw new Error(`Insufficient points. You need ${gift.points_price} points, but currently have ${currentPoints}.`);
       }
 
-      const client = getSupabaseClient();
       const payload = {
         child_id: childId,
         gift_id: giftId,
@@ -749,46 +805,49 @@
         status: 'purchased'
       };
 
+      let pur = null;
+      const client = getSupabaseClient();
       if (client) {
         try {
           const { data, error } = await client.from('purchases').insert([payload]).select();
           if (!error && data && data.length > 0) {
-            const pur = data[0];
-            await this.addPointTransaction({
-              child_id: childId,
-              points: -gift.points_price,
-              source_type: 'purchase',
-              source_id: pur.id,
-              description: `Purchased: ${gift.name}`,
-              created_by: 'user'
-            });
-            return pur;
+            pur = data[0];
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Supabase purchase insert error:', e);
+        }
       }
 
       const db = getDB();
-      const purchaseId = 'pur_' + Date.now();
-      const newPurchase = {
-        id: purchaseId,
-        ...payload,
-        purchased_at: new Date().toISOString()
-      };
-      db.purchases.push(newPurchase);
+      if (!pur) {
+        const purchaseId = 'pur_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+        pur = {
+          id: purchaseId,
+          ...payload,
+          purchased_at: new Date().toISOString()
+        };
+      }
 
-      db.point_transactions.push({
-        id: 'pt_' + Date.now(),
+      if (!db.purchases) db.purchases = [];
+      const existingIdx = db.purchases.findIndex(p => String(p.id) === String(pur.id));
+      if (existingIdx !== -1) {
+        db.purchases[existingIdx] = pur;
+      } else {
+        db.purchases.push(pur);
+      }
+      saveDB(db);
+
+      // Deduct points from child balance via negative point transaction
+      await this.addPointTransaction({
         child_id: childId,
         points: -gift.points_price,
         source_type: 'purchase',
-        source_id: purchaseId,
-        description: `Purchased: ${gift.name}`,
-        created_by: 'user',
-        created_at: new Date().toISOString()
+        source_id: pur.id,
+        description: `Purchased Gift: ${gift.name}`,
+        created_by: 'user'
       });
 
-      saveDB(db);
-      return newPurchase;
+      return pur;
     },
 
     // --- SYSTEM SETTINGS ---

@@ -46,7 +46,7 @@ window.TomaStore = {
     grid.innerHTML = gifts.map(gift => `
       <div class="child-card" style="border-top:3px solid var(--gold-primary);">
         <div style="height:120px; overflow:hidden; border-radius:8px; margin-bottom:10px; background:#F1F5F9;">
-          <img src="${gift.image_url}" alt="${gift.name}" style="width:100%; height:100%; object-fit:cover;">
+          <img src="${gift.image_url || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400'}" alt="${gift.name}" style="width:100%; height:100%; object-fit:cover;">
         </div>
         <h4 style="margin:0 0 4px 0; color:#0D2040;">${gift.name}</h4>
         <p style="font-size:0.8rem; color:#64748B; margin-bottom:10px; flex:1;">${gift.description || 'No description'}</p>
@@ -73,7 +73,7 @@ window.TomaStore = {
 
   openEditGiftModal: async function (giftId) {
     const gifts = await TomaDB.getGifts();
-    const gift = gifts.find(g => g.id === giftId);
+    const gift = gifts.find(g => String(g.id) === String(giftId));
     if (!gift) return;
 
     document.getElementById('gift-id').value = gift.id;
@@ -116,12 +116,17 @@ window.TomaStore = {
   },
 
   confirmDeleteGift: function (giftId) {
-    if (confirm('Are you sure you want to delete this gift item?')) {
-      TomaDB.deleteGift(giftId).then(() => {
-        TomaUtils.showToast('Gift deleted.', 'success');
-        this.renderAdminGiftsGrid();
-      });
-    }
+    TomaUtils.showConfirmModal({
+      title: 'Delete Gift Item',
+      message: 'Are you sure you want to delete this gift item from the store?',
+      confirmText: 'Yes, Delete',
+      confirmClass: 'btn-danger',
+      onConfirm: async () => {
+        await TomaDB.deleteGift(giftId);
+        TomaUtils.showToast('Gift deleted successfully.', 'success');
+        await this.renderAdminGiftsGrid();
+      }
+    });
   },
 
   renderAdminPurchasesTable: async function () {
@@ -132,8 +137,8 @@ window.TomaStore = {
     const children = await TomaDB.getChildren();
     const gifts = await TomaDB.getGifts();
 
-    const childMap = new Map(children.map(c => [c.id, c]));
-    const giftMap = new Map(gifts.map(g => [g.id, g]));
+    const childMap = new Map(children.map(c => [String(c.id), c]));
+    const giftMap = new Map(gifts.map(g => [String(g.id), g]));
 
     if (purchases.length === 0) {
       container.innerHTML = `<div style="text-align:center; padding:30px; color:#64748B;">No gift purchases made yet.</div>`;
@@ -155,15 +160,16 @@ window.TomaStore = {
           </thead>
           <tbody>
             ${purchases.map(p => {
-              const child = childMap.get(p.child_id);
-              const gift = giftMap.get(p.gift_id);
+              const child = childMap.get(String(p.child_id));
+              const gift = giftMap.get(String(p.gift_id));
+              const dateStr = p.created_at || p.purchased_at || new Date().toISOString();
               return `
                 <tr>
-                  <td>${TomaUtils.formatDate(p.purchased_at)}</td>
-                  <td><strong>${child ? child.name : 'Unknown'}</strong></td>
+                  <td>${TomaUtils.formatDate(dateStr)}</td>
+                  <td><strong>${child ? child.name : 'Child ID #' + p.child_id}</strong></td>
                   <td><span class="child-code">${child ? child.child_code : 'N/A'}</span></td>
-                  <td>🎁 ${gift ? gift.name : 'Gift Item'}</td>
-                  <td><strong style="color:var(--gold-dark);">${p.points_price} Pts</strong></td>
+                  <td>🎁 ${gift ? gift.name : 'Gift Item #' + p.gift_id}</td>
+                  <td><strong style="color:var(--gold-dark);">${p.points_price || (gift ? gift.points_price : 0)} Pts</strong></td>
                   <td><span class="badge badge-success">CLAIMED</span></td>
                 </tr>
               `;
@@ -189,12 +195,16 @@ window.TomaStore = {
     const purchases = await TomaDB.getPurchases();
     const childPoints = await TomaDB.getChildPoints(childId);
 
-    const childPurchase = purchases.find(p => p.child_id === childId);
+    const childPurchase = purchases.find(p => String(p.child_id) === String(childId));
+
+    if (gifts.length === 0) {
+      container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:30px; color:rgba(255,255,255,0.6);">No gifts available in store.</div>`;
+      return;
+    }
 
     container.innerHTML = gifts.map(gift => {
-      const hasPurchasedThis = childPurchase && childPurchase.gift_id === gift.id;
+      const hasPurchasedThis = childPurchase && String(childPurchase.gift_id) === String(gift.id);
       const isAffordable = childPoints >= gift.points_price;
-      const canBuy = isStoreOn && !childPurchase && isAffordable && gift.active;
 
       let btnText = `BUY FOR ${gift.points_price} PTS`;
       let btnClass = 'btn-gold';
@@ -221,7 +231,7 @@ window.TomaStore = {
       return `
         <div class="gift-card-user ${hasPurchasedThis ? 'purchased-highlight' : ''}">
           <div class="gift-image-wrap">
-            <img src="${gift.image_url}" alt="${gift.name}">
+            <img src="${gift.image_url || 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400'}" alt="${gift.name}">
           </div>
           <div class="gift-title">${gift.name}</div>
           <div class="gift-desc">${gift.description || ''}</div>
