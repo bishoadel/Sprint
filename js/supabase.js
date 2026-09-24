@@ -177,6 +177,24 @@
       return children.find(c => String(c.id) === String(id)) || null;
     },
 
+    getChildByCredentials: async function (username, password) {
+      if (!username || !password) return null;
+      const children = await this.getChildren();
+      const uClean = username.trim().toLowerCase();
+      const pClean = password.trim();
+
+      return children.find(c => {
+        if (!c || !c.name) return false;
+        const creds = (typeof TomaUtils !== 'undefined' && TomaUtils.getChildCredentials)
+          ? TomaUtils.getChildCredentials(c.name)
+          : { username: '', password: '' };
+
+        const matchCalculated = (creds.username === uClean && creds.password === pClean);
+        const matchStored = (c.username && String(c.username).toLowerCase() === uClean && c.password && String(c.password) === pClean);
+        return matchCalculated || matchStored;
+      }) || null;
+    },
+
     createChild: async function (childData) {
       const client = getSupabaseClient();
       const existing = await this.getChildren();

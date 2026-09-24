@@ -99,6 +99,12 @@ window.TomaChildren = {
     document.getElementById('profile-child-age').textContent = TomaUtils.getAge(child.birth_date);
     document.getElementById('profile-child-points').textContent = `${points} Pts`;
 
+    const creds = TomaUtils.getChildCredentials(child.name);
+    const uElem = document.getElementById('profile-child-username');
+    const pElem = document.getElementById('profile-child-password');
+    if (uElem) uElem.textContent = creds.username;
+    if (pElem) pElem.textContent = creds.password;
+
     // Attendance Stats
     document.getElementById('profile-mass-pct').textContent = `${stats.massPercentage}%`;
     document.getElementById('profile-ss-pct').textContent = `${stats.sundaySchoolPercentage}%`;

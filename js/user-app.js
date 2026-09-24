@@ -22,7 +22,7 @@ window.TomaUserApp = {
     }
     
     if (!child) {
-      TomaUtils.showToast(`Child ID "${childIdOrCode}" not found. Please enter your 5-digit Child ID.`, 'error');
+      TomaUtils.showToast(`Child ID "${childIdOrCode}" not found. Please log in with your Username & Password.`, 'error');
       this.showManualIdEntryCard();
       return;
     }
@@ -46,27 +46,46 @@ window.TomaUserApp = {
     if (mainDash) mainDash.style.display = 'block';
   },
 
-  handleManualIdSubmit: async function (e) {
-    e.preventDefault();
-    const input = document.getElementById('input-manual-child-id');
-    const code = input ? input.value.trim() : '';
+  togglePasswordVisibility: function () {
+    const input = document.getElementById('input-child-password');
+    const btn = document.getElementById('btn-toggle-password-visibility');
+    if (!input) return;
 
-    if (!code || code.length !== 5) {
-      TomaUtils.showToast('Please enter your 5-digit Child ID (e.g. 48291).', 'error');
+    if (input.type === 'password') {
+      input.type = 'text';
+      if (btn) btn.textContent = '🙈';
+    } else {
+      input.type = 'password';
+      if (btn) btn.textContent = '👁️';
+    }
+  },
+
+  handleManualLoginSubmit: async function (e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const userInput = document.getElementById('input-child-username');
+    const passInput = document.getElementById('input-child-password');
+
+    const username = userInput ? userInput.value.trim() : '';
+    const password = passInput ? passInput.value.trim() : '';
+
+    if (!username || !password) {
+      TomaUtils.showToast('Please enter both your Username and Password.', 'error');
       return;
     }
 
-    const child = await TomaDB.getChildByCode(code);
+    const child = await TomaDB.getChildByCredentials(username, password);
     if (!child) {
-      TomaUtils.showToast(`No registered child found with ID "${code}". Please check your 5-digit ID.`, 'error');
+      TomaUtils.showToast(`Invalid Username or Password. (e.g. username: kirolos.mina | password: kirolos-mina@tomaelrasol)`, 'error');
       return;
     }
 
     // Update URL parameter and load portal
-    window.history.pushState({}, '', `?id=${encodeURIComponent(code)}`);
+    const targetCode = child.child_code || child.id;
+    window.history.pushState({}, '', `?id=${encodeURIComponent(targetCode)}`);
     this.showMainDashboard();
     this.currentChild = child;
     await this.loadChildPortal(child.id);
+    TomaUtils.showToast(`Welcome back, ${child.name}!`, 'success');
   },
 
   loadChildPortal: async function (childId) {

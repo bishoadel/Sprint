@@ -66,9 +66,6 @@
         <a class="nav-item" data-tab="birthdays">
           <span class="icon">🎂</span> Birthdays
         </a>
-        <a class="nav-item" data-tab="notifications">
-          <span class="icon">🔔</span> Birthday Notifications
-        </a>
         <a class="nav-item" data-tab="store">
           <span class="icon">🎁</span> Store & Presents
         </a>
@@ -344,38 +341,6 @@
           </div>
         </section>
 
-        <!-- 9.5. BIRTHDAY NOTIFICATIONS TAB -->
-        <section class="tab-panel" id="tab-notifications">
-          <div class="card-container">
-            <div
-              style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px;">
-              <div>
-                <h3 style="margin:0;">🔔 Website Phone & Device Popup Notifications</h3>
-                <p style="color:#64748B; font-size:0.85rem; margin:0;">Automated popup notifications on phone & browser
-                  (Chrome/Android/iOS/Desktop) for child birthdays.</p>
-              </div>
-              <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="btn btn-gold btn-sm" id="btn-enable-push-notifications">🔔 Enable Phone & Browser Popup
-                  Notifications</button>
-                <button class="btn btn-outline btn-sm"
-                  onclick="TomaNotifications.triggerSystemPopup('🔔 Test Phone Popup Notification', 'Website birthday popups are working perfectly on your phone & device!')">🧪
-                  Test Phone Popup</button>
-                <button class="btn btn-primary btn-sm" onclick="TomaNotifications.triggerManualEmailCheck()">📧 Send
-                  Birthday Emails Now</button>
-              </div>
-            </div>
-
-            <!-- Today's Birthdays Alerts -->
-            <div id="today-birthdays-container"></div>
-
-            <!-- Tomorrow's Birthdays Alerts (1-Day Advance) -->
-            <div id="tomorrow-birthdays-container"></div>
-
-            <!-- Monthly Birthday Summary -->
-            <div id="monthly-birthdays-container"></div>
-          </div>
-        </section>
-
         <!-- 10. STORE TAB -->
         <section class="tab-panel" id="tab-store">
           <div class="card-container" style="margin-bottom:24px;">
@@ -510,6 +475,15 @@
             <span style="font-size:0.8rem; color:#64748B; font-weight:700;">BIRTHDAY & AGE</span>
             <div style="font-size:1.1rem; font-weight:700; color:#0D2040;" id="profile-child-dob">N/A</div>
             <span style="font-size:0.85rem; color:#64748B;"><span id="profile-child-age">0</span> years old</span>
+          </div>
+        </div>
+
+        <!-- Portal Login Credentials Card -->
+        <div style="background:#F0FDF4; border:1px solid #BBF7D0; padding:12px 16px; border-radius:10px; margin-bottom:16px;">
+          <strong style="color:#166534; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:4px;">🔑 Child Portal Login Credentials</strong>
+          <div style="font-size:0.9rem; color:#15803D;">
+            • Username: <strong id="profile-child-username" style="color:#0D2040;">-</strong><br>
+            • Password: <strong id="profile-child-password" style="color:#0D2040;">-</strong>
           </div>
         </div>
 

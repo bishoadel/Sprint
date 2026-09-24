@@ -158,7 +158,7 @@ window.TomaUtils = {
     return today.getMonth() === birthDate.getMonth();
   },
 
-  // Simple Confetti Trigger (Uses canvas-confetti CDN if loaded or CSS fallback)
+  // Confetti Trigger
   launchConfetti: function () {
     if (typeof confetti === 'function') {
       confetti({
@@ -167,5 +167,31 @@ window.TomaUtils = {
         origin: { y: 0.6 }
       });
     }
+  },
+
+  // Child Username & Password Generator (firstname.lastname / firstname-lastname@tomaelrasol)
+  getChildCredentials: function (childName) {
+    if (!childName) return { username: '', password: '' };
+    const cleanName = childName.trim().toLowerCase().replace(/[^a-z0-9\s]/gi, '');
+    const parts = cleanName.split(/\s+/).filter(Boolean);
+
+    if (parts.length === 0) {
+      return { username: '', password: '' };
+    }
+
+    if (parts.length === 1) {
+      const u = parts[0];
+      const p = `${parts[0]}@tomaelrasol`;
+      return { username: u, password: p };
+    }
+
+    const firstName = parts[0];
+    const lastName = parts.slice(1).join('.');
+    const lastNameHyphen = parts.slice(1).join('-');
+
+    const username = `${firstName}.${lastName}`;
+    const password = `${firstName}-${lastNameHyphen}@tomaelrasol`;
+
+    return { username, password };
   }
 };

@@ -140,9 +140,6 @@ window.TomaAdminApp = {
       case 'birthdays':
         await TomaBirthdays.initAdmin();
         break;
-      case 'notifications':
-        await TomaNotifications.initAdmin();
-        break;
       case 'store':
         await TomaStore.initAdmin();
         break;
